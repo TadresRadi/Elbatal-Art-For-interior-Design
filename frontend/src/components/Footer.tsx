@@ -5,7 +5,7 @@ export function Footer() {
   const { t } = useApp();
 
   const socialLinks = [
-    { icon: Facebook, href: '#' },
+    { icon: Facebook, href: 'https://www.facebook.com/eng.armya' },
     { icon: Instagram, href: '#' },
     { icon: Twitter, href: '#' },
     { icon: Linkedin, href: '#' },
@@ -78,7 +78,7 @@ export function Footer() {
             <ul className="space-y-3">
               <li className="flex items-center space-x-3 rtl:space-x-reverse text-gray-400 text-sm">
                 <Phone className="h-4 w-4 text-[#D4AF37]" />
-                <span>+20 123 456 7890</span>
+                <span>+20 01014888624</span>
               </li>
               <li className="flex items-center space-x-3 rtl:space-x-reverse text-gray-400 text-sm">
                 <Mail className="h-4 w-4 text-[#D4AF37]" />
@@ -98,6 +98,7 @@ export function Footer() {
                   <a
                     key={index}
                     href={social.href}
+                    target='blank'
                     className="w-8 h-8 rounded-full bg-gray-800 hover:bg-[#D4AF37] flex items-center justify-center transition-colors"
                   >
                     <Icon className="h-4 w-4" />
