@@ -2,6 +2,7 @@ import { useApp } from '../lib/context';
 import { Button } from './ui/button';
 import { Menu, X, Sun, Moon, Globe } from 'lucide-react';
 import { useState } from 'react';
+import LogoUrl from '../assets/logo.jpg';
 
 export function Header() {
   const { language, setLanguage, theme, setTheme, t } = useApp();
@@ -23,8 +24,17 @@ export function Header() {
           {/* Logo */}
           <div className="flex items-center">
             <a href="#home" className="flex items-center space-x-2 rtl:space-x-reverse">
-              <div className="w-10 h-10 rounded-lg gold-gradient flex items-center justify-center">
-                <span className="text-white">EA</span>
+              {/* removed gold-gradient and forced transparent/no-shadow/no-padding */}
+              <div className="w-10 h-10 rounded-lg bg-transparent flex items-center justify-center overflow-hidden p-0 shadow-none border-0">
+                {/* image imported by Vite */}
+                <img
+                  src={LogoUrl}
+                  alt="Elbatal Art Logo"
+                  className="w-8 h-8 object-contain block"
+                  width={32}
+                  height={32}
+                  style={{ display: 'block' }}
+                />
               </div>
               <div className={`${language === 'ar' ? 'mr-3' : 'ml-3'}`}>
                 <h1 className="text-[#1A1A1A] dark:text-white">
@@ -52,7 +62,6 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center space-x-4 rtl:space-x-reverse">
-            {/* Theme Toggle */}
             <Button
               variant="ghost"
               size="icon"
@@ -61,7 +70,6 @@ export function Header() {
               {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
             </Button>
 
-            {/* Language Toggle */}
             <Button
               variant="ghost"
               size="icon"
@@ -71,15 +79,13 @@ export function Header() {
               <span className="ml-1 text-xs">{language === 'ar' ? 'EN' : 'AR'}</span>
             </Button>
 
-            {/* Client Login */}
             <Button
               className="hidden sm:flex bg-[#D4AF37] hover:bg-[#B8941F] text-white"
-              onClick={() => window.location.hash = '#login'}
+              onClick={() => (window.location.hash = '#login')}
             >
               {t('دخول العميل', 'Client Login')}
             </Button>
 
-            {/* Mobile Menu Button */}
             <Button
               variant="ghost"
               size="icon"

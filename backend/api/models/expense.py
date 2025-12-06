@@ -8,4 +8,4 @@ class Expense(models.Model):
     date = models.DateField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.project.title} - {self.amount} "
+        return f"{self.project.title} - {self.amount} EGP "
