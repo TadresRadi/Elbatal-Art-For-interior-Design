@@ -51,10 +51,10 @@ export function ContactPage() {
                     {t('الهاتف', 'Phone')}
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
-                    +20 123 456 7890
+                    +20 01014888624
                   </p>
                   <p className="text-gray-600 dark:text-gray-400 text-sm">
-                    +20 100 123 4567
+                    +20 010 15921643
                   </p>
                 </CardContent>
               </Card>
@@ -68,10 +68,10 @@ export function ContactPage() {
                     {t('البريد الإلكتروني', 'Email')}
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
-                    info@elbatalart.com
+                    elbatlart1@gmail.com
                   </p>
                   <p className="text-gray-600 dark:text-gray-400 text-sm">
-                    support@elbatalart.com
+                    elbatlart1@gmail.com
                   </p>
                 </CardContent>
               </Card>
@@ -86,8 +86,8 @@ export function ContactPage() {
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400 text-sm">
                     {t(
-                      '123 شارع التحرير، القاهرة، مصر',
-                      '123 Tahrir Street, Cairo, Egypt'
+                      'قنا - مدينة العمال - شارع صيدلية ابى سيفين',
+                      'Qena – Al-Ommal City – Abi Sefin Pharmacy Street'
                     )}
                   </p>
                 </CardContent>
@@ -105,7 +105,7 @@ export function ContactPage() {
                     {t('السبت - الخميس', 'Saturday - Thursday')}
                   </p>
                   <p className="text-gray-600 dark:text-gray-400 text-sm">
-                    {t('9:00 صباحاً - 6:00 مساءً', '9:00 AM - 6:00 PM')}
+                    {t('10:00 صباحاً - 10:00 مساءً', '10:00 AM - 10:00 PM')}
                   </p>
                 </CardContent>
               </Card>
@@ -209,15 +209,7 @@ export function ContactPage() {
             {t('موقعنا', 'Our Location')}
           </h2>
           <div className="rounded-lg overflow-hidden luxury-shadow h-96">
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3453.6094234089456!2d31.235712!3d30.044419!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14583fa60b21beeb%3A0x79dfb296e8423bba!2sCairo%2C%20Egypt!5e0!3m2!1sen!2sus!4v1234567890"
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            ></iframe>
+            <iframe src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d7162.282342086387!2d32.7257577685396!3d26.15953149103864!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sar!2seg!4v1765141815295!5m2!1sar!2seg" width="100%" height="450" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"></iframe>
           </div>
         </div>
       </section>
