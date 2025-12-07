@@ -24,16 +24,16 @@ export function Header() {
           {/* Logo */}
           <div className="flex items-center">
             <a href="#home" className="flex items-center space-x-2 rtl:space-x-reverse">
-              {/* removed gold-gradient and forced transparent/no-shadow/no-padding */}
               <div className="w-10 h-10 rounded-lg bg-transparent flex items-center justify-center overflow-hidden p-0 shadow-none border-0">
                 {/* image imported by Vite */}
                 <img
                   src={LogoUrl}
                   alt="Elbatal Art Logo"
-                  className="w-8 h-8 object-contain block"
+                  className="w-8 h-8 object-contain block rounded-lg"
                   width={32}
                   height={32}
                   style={{ display: 'block' }}
+                  
                 />
               </div>
               <div className={`${language === 'ar' ? 'mr-3' : 'ml-3'}`}>

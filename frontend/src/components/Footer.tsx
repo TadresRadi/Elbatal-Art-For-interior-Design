@@ -1,5 +1,6 @@
 import { useApp } from '../lib/context';
 import { Facebook, Instagram, Twitter, Linkedin, Phone, Mail, MapPin } from 'lucide-react';
+import LogoUrl from '../assets/logo.jpg';
 
 export function Footer() {
   const { t } = useApp();
@@ -18,8 +19,17 @@ export function Footer() {
           {/* Company Info */}
           <div>
             <div className="flex items-center space-x-2 rtl:space-x-reverse mb-4">
-              <div className="w-10 h-10 rounded-lg gold-gradient flex items-center justify-center">
-                <span className="text-white">EA</span>
+              <div className="w-10 h-10 rounded-lg bg-transparent flex items-center justify-center overflow-hidden p-0 shadow-none border-0">
+                {/* image imported by Vite */}
+                <img
+                  src={LogoUrl}
+                  alt="Elbatal Art Logo"
+                  className="w-8 h-8 object-contain block rounded-lg"
+                  width={32}
+                  height={32}
+                  style={{ display: 'block' }}
+                  
+                />
               </div>
               <h3 className="text-[#D4AF37]">
                 {t('شركة البطل للفنون', 'Elbatal Art Company')}

@@ -162,7 +162,7 @@ export function AboutPage() {
       </section>
 
       {/* Team Members */}
-      <section className="py-20 bg-white dark:bg-black">
+      {/* <section className="py-20 bg-white dark:bg-black">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <div className="w-16 h-16 rounded-full gold-gradient flex items-center justify-center mx-auto mb-4">
@@ -201,7 +201,7 @@ export function AboutPage() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Why Choose Us */}
       <section className="py-20 bg-[#1A1A1A] text-white">
