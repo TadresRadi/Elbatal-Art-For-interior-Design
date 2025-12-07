@@ -3,7 +3,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { Calendar, ArrowRight } from 'lucide-react';
-
+import { ContactPage } from './ContactPage'
 const blogPosts = [
   {
     id: 1,
@@ -212,9 +212,11 @@ export function NewsPage() {
                   {blogPosts[0].excerpt[language]}
                 </p>
 
-                <Button className="bg-[#D4AF37] hover:bg-[#B8941F] text-white self-start">
-                  {t('اقرأ المزيد', 'Read More')}
-                  <ArrowRight className="mr-2 h-4 w-4 rtl:rotate-180" />
+                <Button className="bg-[#D4AF37] hover:bg-[#B8941F] text-white self-start" asChild>
+                  <a href="/ContactPage#contact">
+                    {t('تواصل معانا', 'Contact Us')}
+                    <ArrowRight className="mr-2 h-4 w-4 rtl:rotate-180" />
+                  </a>
                 </Button>
               </CardContent>
             </div>
@@ -261,8 +263,10 @@ export function NewsPage() {
                     variant="ghost"
                     className="text-[#D4AF37] hover:text-[#B8941F] p-0 h-auto"
                   >
-                    {t('اقرأ المزيد', 'Read More')}
+<a href="/ContactPage#contact">
+                    {t('تواصل معانا', 'Contact Us')}
                     <ArrowRight className="mr-2 h-4 w-4 rtl:rotate-180" />
+                  </a>
                   </Button>
                 </CardContent>
               </Card>
@@ -290,7 +294,10 @@ export function NewsPage() {
               className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:outline-none focus:border-[#D4AF37]"
             />
             <Button className="bg-[#D4AF37] hover:bg-[#B8941F] text-white">
-              {t('اشترك الآن', 'Subscribe Now')}
+              <a href="/ContactPage#contact">
+                    {t('تواصل معانا', 'Contact Us')}
+                    <ArrowRight className="mr-2 h-4 w-4 rtl:rotate-180" />
+                  </a>
             </Button>
           </div>
         </div>

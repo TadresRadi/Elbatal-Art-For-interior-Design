@@ -23,17 +23,17 @@ export function ServicesPage() {
 
   const fadeUp = {
     hidden: { opacity: 0, y: 40 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeOut' } },
+    show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeInOut' } },
   };
 
   const fadeLeft = {
     hidden: { opacity: 0, x: -60 },
-    show: { opacity: 1, x: 0, transition: { duration: 0.9, ease: 'easeOut' } },
+    show: { opacity: 1, x: 0, transition: { duration: 0.9, ease: 'easeInOut' } },
   };
 
   const fadeRight = {
     hidden: { opacity: 0, x: 60 },
-    show: { opacity: 1, x: 0, transition: { duration: 0.9, ease: 'easeOut' } },
+    show: { opacity: 1, x: 0, transition: { duration: 0.9, ease: 'easeInOut' } },
   };
 
   const iconAnim = {
