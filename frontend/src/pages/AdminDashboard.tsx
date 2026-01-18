@@ -1,419 +1,356 @@
 import { useApp } from '../lib/context';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import api from '../lib/api';
+
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '../components/ui/table';
+import { Textarea } from '../components/ui/textarea';
+import { Label } from '../components/ui/label';
+
 import {
-  LogOut,
-  Users,
-  Briefcase,
-  DollarSign,
-  TrendingUp,
-  MessageSquare,
-  Search,
-  Edit,
-  Trash2,
-  Plus,
+  LogOut, Users, Briefcase, DollarSign, TrendingUp, MessageSquare,
+  Edit, Trash2, Plus, CheckCircle, FileText, Calendar, Percent,
+  CreditCard, AlertCircle
 } from 'lucide-react';
-import { useState } from 'react';
+
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
 
-const COLORS = ['#D4AF37', '#B8941F', '#F4E4B8', '#C9A961'];
+const COLORS = ['#D4AF37','#B8941F','#F4E4B8','#C9A961'];
+
+type ChatMessage = {
+  id: number;
+  text: string;
+  sender: 'admin' | 'client';
+  time: string;
+};
+
+type Client = {
+  id: number;
+  name: string;
+  username: string;
+  password?: string;
+  progress: number;
+  paid: number;
+  total: number;
+  invoice?: string;
+  paidAt?: string;
+  notes?: string;
+  status: 'active' | 'completed' | 'pending';
+  createdAt: string;
+  messages?: ChatMessage[];
+};
 
 export function AdminDashboard() {
   const { t, language } = useApp();
-  const [activeTab, setActiveTab] = useState('overview');
+  const [tab, setTab] = useState('overview');
 
-  const stats = {
-    totalClients: 45,
-    activeProjects: 12,
-    completedProjects: 33,
-    totalRevenue: 2500000,
-    monthlyRevenue: 350000,
+  const [clients, setClients] = useState<Client[]>([]);
+  const [deleted, setDeleted] = useState<Client[]>([]);
+
+  const [modalCreate, setModalCreate] = useState(false);
+  const [modalEdit, setModalEdit] = useState<Client | null>(null);
+  const [modalChat, setModalChat] = useState<Client | null>(null);
+
+  const [form, setForm] = useState({
+    username: '', password: '', project_title: '', budget: '', phone: '', address: ''
+  });
+
+  const [editForm, setEditForm] = useState({
+    name:'', username:'', password:'',
+    paid:'', paidAt:'', invoice:'',
+    progress:'', notes:'', total:''
+  });
+
+  const [message, setMessage] = useState('');
+  const chatRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        const res = await api.get('admin/clients/');
+        setClients(res.data);
+      } catch (err) {
+        console.error('Error loading clients:', err);
+      }
+    };
+    loadClients();
+  }, []);
+
+  const stats = useMemo(() => ({
+    total: clients.length,
+    active: clients.filter(c => c.status === 'active').length,
+    completed: clients.filter(c => c.status === 'completed').length,
+    totalRevenue: clients.reduce((acc, c) => acc + c.total, 0),
+  }), [clients]);
+
+  const projectsData = useMemo(() => {
+    const now = new Date();
+    return Array.from({length:6},(_,i)=>{
+      const d = new Date(now.getFullYear(), now.getMonth()-5+i, 1);
+      const name = language==='ar'
+        ? d.toLocaleString('ar-EG',{month:'short'})
+        : d.toLocaleString('en-US',{month:'short'});
+      const count = clients.filter(c => {
+        const dC = new Date(c.createdAt);
+        return dC.getFullYear()===d.getFullYear() && dC.getMonth()===d.getMonth();
+      }).length;
+      return { name, projects: count };
+    });
+  }, [clients, language]);
+
+  const statusData = useMemo(() => {
+    const map: any = {};
+    clients.forEach(c => { map[c.status] = (map[c.status]||0) + 1 });
+    return Object.entries(map).map(([key,value])=>{
+      const name = key === 'active'
+        ? (language==='ar'?'جاري العمل':'In Progress')
+        : key==='completed'
+          ? (language==='ar'?'مكتمل':'Completed')
+          : (language==='ar'?'معلق':'Pending');
+      return { name, value };
+    });
+  }, [clients, language]);
+
+  const formatCurrency = (num: number) =>
+    new Intl.NumberFormat(language==='ar'?'ar-EG':'en-US',{style:'currency',currency:'EGP'}).format(num);
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return language === 'ar' 
+      ? date.toLocaleDateString('ar-EG')
+      : date.toLocaleDateString('en-US');
   };
 
-  const projectsData = [
-    { name: language === 'ar' ? 'يناير' : 'Jan', projects: 4 },
-    { name: language === 'ar' ? 'فبراير' : 'Feb', projects: 3 },
-    { name: language === 'ar' ? 'مارس' : 'Mar', projects: 5 },
-    { name: language === 'ar' ? 'أبريل' : 'Apr', projects: 4 },
-    { name: language === 'ar' ? 'مايو' : 'May', projects: 6 },
-    { name: language === 'ar' ? 'يونيو' : 'Jun', projects: 5 },
-  ];
-
-  const statusData = [
-    {
-      name: language === 'ar' ? 'جاري العمل' : 'In Progress',
-      value: 12,
-    },
-    {
-      name: language === 'ar' ? 'مكتمل' : 'Completed',
-      value: 33,
-    },
-    {
-      name: language === 'ar' ? 'معلق' : 'Pending',
-      value: 5,
-    },
-  ];
-
-  const clients = [
-    {
-      id: 1,
-      name: { ar: 'أحمد محمد', en: 'Ahmed Mohamed' },
-      project: { ar: 'فيلا - القاهرة الجديدة', en: 'Villa - New Cairo' },
-      progress: 75,
-      status: 'active',
-      budget: 150000,
-    },
-    {
-      id: 2,
-      name: { ar: 'سارة أحمد', en: 'Sara Ahmed' },
-      project: { ar: 'شقة - المعادي', en: 'Apartment - Maadi' },
-      progress: 40,
-      status: 'active',
-      budget: 80000,
-    },
-    {
-      id: 3,
-      name: { ar: 'محمود حسن', en: 'Mahmoud Hassan' },
-      project: { ar: 'مكتب - التجمع', en: 'Office - Assembly' },
-      progress: 90,
-      status: 'active',
-      budget: 120000,
-    },
-    {
-      id: 4,
-      name: { ar: 'فاطمة علي', en: 'Fatma Ali' },
-      project: { ar: 'فيلا - الشيخ زايد', en: 'Villa - Sheikh Zayed' },
-      progress: 100,
-      status: 'completed',
-      budget: 200000,
-    },
-    {
-      id: 5,
-      name: { ar: 'خالد أحمد', en: 'Khaled Ahmed' },
-      project: { ar: 'شقة - 6 أكتوبر', en: 'Apartment - 6 October' },
-      progress: 25,
-      status: 'active',
-      budget: 70000,
-    },
-  ];
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
-      style: 'currency',
-      currency: 'EGP',
-    }).format(amount);
+  // -------------------- CREATE CLIENT --------------------
+  const createClient = async () => {
+    if (!form.username.trim() || !form.password.trim() || !form.project_title.trim() || !form.budget) {
+      return alert(t('يرجى ملء جميع الحقول المطلوبة','Please fill all required fields'));
+    }
+    try {
+      const res = await api.post('admin/clients/', {
+        username: form.username,
+        password: form.password,
+        project_title: form.project_title,
+        budget: Number(form.budget),
+        phone: form.phone || '',
+        address: form.address || ''
+      });
+      setClients([res.data, ...clients]);
+      setForm({ username:'', password:'', project_title:'', budget:'', phone:'', address:'' });
+      setModalCreate(false);
+      setTab('clients');
+      alert(t('تم إنشاء العميل بنجاح','Client created successfully'));
+    } catch (err: any) {
+      console.error('Error creating client:', err);
+      if (err.response && err.response.data) {
+        alert(t('فشل إنشاء العميل: ','Failed to create client: ') + JSON.stringify(err.response.data));
+      } else {
+        alert(t('فشل إنشاء العميل','Failed to create client'));
+      }
+    }
   };
 
+  // -------------------- UPDATE / DELETE / MESSAGE --------------------
+const updateClient = async (id:number, updates: Partial<Client>) => {
+    try {
+      const res = await api.patch(`admin/clients/${id}/`, updates);
+      setClients(clients.map(c=>c.id===id?res.data:c));
+    } catch(err) {
+      console.error('Error updating client:', err);
+    }
+};
+
+  const deleteClient = async (id:number) => {
+    if(!window.confirm(t('هل أنت متأكد من حذف العميل','Delete client'))) return;
+    try {
+      await api.delete(`admin/clients/${id}/`);
+      setClients(clients.filter(c=>c.id!==id));
+    } catch(err) {
+      console.error('Error deleting client:', err);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!modalChat || !message.trim()) return;
+    try {
+      const res = await api.post(`admin/clients/${modalChat.id}/messages/`, {
+        text: message,
+        sender: 'admin'
+      });
+      updateClient(modalChat.id, {
+        messages: [...(modalChat.messages||[]), res.data]
+      });
+      setMessage('');
+    } catch(err) {
+      console.error('Error sending message:', err);
+    }
+  };
+
+  useEffect(()=>{ if(chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; },[modalChat?.messages]);
+
+  // -------------------- RENDER TABLE --------------------
+  const renderTable = (list:Client[], options:{completed?:boolean,deleted?:boolean}={}) => (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{t('الاسم','Name')}</TableHead>
+          <TableHead>{t('التكلفة الكلية','Total Cost')}</TableHead>
+          <TableHead>{t('المدفوع','Paid')}</TableHead>
+          <TableHead>{t('نسبة الإنجاز','Progress')}</TableHead>
+          <TableHead>{t('الحالة','Status')}</TableHead>
+          <TableHead>{t('الإجراءات','Actions')}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {list.map(c=>(
+          <TableRow key={c.id}>
+            <TableCell>{c.name}</TableCell>
+            <TableCell>{formatCurrency(c.total)}</TableCell>
+            <TableCell>{formatCurrency(c.paid)}</TableCell>
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="bg-green-600 h-2 rounded-full" style={{ width: `${c.progress}%` }}/>
+                </div>
+                <span>{c.progress}%</span>
+              </div>
+            </TableCell>
+            <TableCell><Badge>{c.status==='active'?t('نشط','Active'):c.status==='completed'?t('مكتمل','Completed'):t('معلق','Pending')}</Badge></TableCell>
+            <TableCell className="flex gap-1">
+              {!options.deleted && <>
+                <Button variant="ghost" size="icon" onClick={()=>{setModalEdit(c); setEditForm({ 
+                  name: c.name, username:c.username, password:c.password||'', 
+                  paid:c.paid.toString(), paidAt:c.paidAt||'', invoice:c.invoice||'',
+                  progress:c.progress.toString(), notes:c.notes||'', total:c.total.toString()
+                })}} title={t('تعديل العميل','Edit Client')}><Edit className="h-4 w-4"/></Button>
+                <Button variant="ghost" size="icon" onClick={()=>setModalChat(c)} title={t('فتح الشات','Open Chat')}><MessageSquare className="h-4 w-4"/></Button>
+                {!options.completed && <Button variant="ghost" size="icon" 
+        onClick={async ()=>{
+            try {
+                await api.post(`admin/clients/${c.id}/complete/`);
+                setClients(clients.map(cl => cl.id===c.id ? {...cl, status:'completed', progress:100} : cl));
+            } catch(err){
+                console.error(err);
+            }
+        }}
+        title={t('تم الإكمال','Mark as Completed')}>
+  <CheckCircle className="h-4 w-4 text-green-600"/>
+</Button>}
+                <Button variant="ghost" size="icon" onClick={()=>deleteClient(c.id)} title={t('حذف العميل','Delete Client')}><Trash2 className="h-4 w-4 text-red-600"/></Button>
+              </>}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+
+  // -------------------- RENDER --------------------
   return (
     <div className="min-h-screen pt-20 bg-gray-50 dark:bg-gray-900">
+
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl md:text-3xl text-[#1A1A1A] dark:text-white">
-                {t('لوحة تحكم المدير', 'Admin Dashboard')}
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-1">
-                {t('مرحباً، مدير النظام', 'Welcome, Administrator')}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => (window.location.hash = '#home')}
-            >
-              <LogOut className="mr-2 h-5 w-5" />
-              {t('خروج', 'Logout')}
+      <div className="bg-white dark:bg-gray-800 border-b">
+        <div className="container mx-auto px-6 py-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl">{t('لوحة تحكم المدير','Admin Dashboard')}</h1>
+            <p className="text-gray-500">{t('مرحباً، مدير النظام','Welcome, Administrator')}</p>
+          </div>
+          <div className="flex gap-3">
+            <Button className="bg-[#D4AF37] hover:bg-[#B8941F] text-white" onClick={()=>setModalCreate(true)}>
+              <Plus className="mr-2 h-4 w-4"/> {t('إنشاء حساب عميل','New Client')}
+            </Button>
+            <Button variant="outline" onClick={()=>{localStorage.clear(); window.location.href='/#login';}}>
+              <LogOut className="mr-2 h-4 w-4"/> {t('خروج','Logout')}
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+      {/* Tabs */}
+      <div className="container mx-auto px-6 py-8">
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="mb-6">
-            <TabsTrigger value="overview">{t('نظرة عامة', 'Overview')}</TabsTrigger>
-            <TabsTrigger value="clients">{t('العملاء', 'Clients')}</TabsTrigger>
-            <TabsTrigger value="chat">{t('المحادثات', 'Messages')}</TabsTrigger>
+            <TabsTrigger value="overview">{t('نظرة عامة','Overview')}</TabsTrigger>
+            <TabsTrigger value="clients">{t('العملاء','Clients')}</TabsTrigger>
+            <TabsTrigger value="completed">{t('عملاء منتهية','Completed')}</TabsTrigger>
           </TabsList>
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-8">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-              <Card className="bg-white dark:bg-gray-800">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        {t('إجمالي العملاء', 'Total Clients')}
-                      </p>
-                      <h3 className="text-2xl text-[#1A1A1A] dark:text-white">
-                        {stats.totalClients}
-                      </h3>
-                    </div>
-                    <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                      <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white dark:bg-gray-800">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        {t('مشاريع نشطة', 'Active Projects')}
-                      </p>
-                      <h3 className="text-2xl text-[#1A1A1A] dark:text-white">
-                        {stats.activeProjects}
-                      </h3>
-                    </div>
-                    <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                      <Briefcase className="h-6 w-6 text-green-600 dark:text-green-400" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white dark:bg-gray-800">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        {t('مشاريع مكتملة', 'Completed')}
-                      </p>
-                      <h3 className="text-2xl text-[#1A1A1A] dark:text-white">
-                        {stats.completedProjects}
-                      </h3>
-                    </div>
-                    <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                      <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white dark:bg-gray-800">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        {t('الإيرادات الشهرية', 'Monthly Revenue')}
-                      </p>
-                      <h3 className="text-xl text-[#1A1A1A] dark:text-white">
-                        {formatCurrency(stats.monthlyRevenue)}
-                      </h3>
-                    </div>
-                    <div className="w-12 h-12 rounded-lg gold-gradient flex items-center justify-center">
-                      <DollarSign className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white dark:bg-gray-800">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                        {t('إجمالي الإيرادات', 'Total Revenue')}
-                      </p>
-                      <h3 className="text-xl text-[#1A1A1A] dark:text-white">
-                        {formatCurrency(stats.totalRevenue)}
-                      </h3>
-                    </div>
-                    <div className="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                      <TrendingUp className="h-6 w-6 text-orange-600 dark:text-orange-400" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <Card className="bg-white dark:bg-gray-800">
-                <CardContent className="p-6">
-                  <h3 className="text-xl mb-6 text-[#1A1A1A] dark:text-white">
-                    {t('المشاريع حسب الشهر', 'Projects by Month')}
-                  </h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={projectsData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="projects" fill="#D4AF37" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-white dark:bg-gray-800">
-                <CardContent className="p-6">
-                  <h3 className="text-xl mb-6 text-[#1A1A1A] dark:text-white">
-                    {t('حالة المشاريع', 'Project Status')}
-                  </h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={statusData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={(entry) => `${entry.name}: ${entry.value}`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {statusData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <StatCard title={t('إجمالي العملاء','Total Clients')} value={stats.total} icon={<Users className="h-6 w-6 text-blue-600"/>}/>
+              <StatCard title={t('مشاريع نشطة','Active Projects')} value={stats.active} icon={<Briefcase className="h-6 w-6 text-green-600"/>}/>
+              <StatCard title={t('مشاريع مكتملة','Completed')} value={stats.completed} icon={<TrendingUp className="h-6 w-6 text-purple-600"/>}/>
+              <StatCard title={t('إجمالي الإيرادات','Total Revenue')} value={formatCurrency(stats.totalRevenue)} icon={<DollarSign className="h-6 w-6 text-yellow-600"/>}/>
             </div>
           </TabsContent>
 
-          {/* Clients Tab */}
           <TabsContent value="clients">
-            <Card className="bg-white dark:bg-gray-800">
+            <Card>
               <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl text-[#1A1A1A] dark:text-white">
-                    {t('إدارة العملاء', 'Client Management')}
-                  </h3>
-                  <Button className="bg-[#D4AF37] hover:bg-[#B8941F] text-white">
-                    <Plus className="mr-2 h-5 w-5" />
-                    {t('إضافة عميل', 'Add Client')}
-                  </Button>
-                </div>
-
-                <div className="mb-6">
-                  <div className="relative">
-                    <Search className="absolute left-3 rtl:right-3 rtl:left-auto top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    <Input
-                      type="text"
-                      placeholder={t('بحث عن عميل...', 'Search for client...')}
-                      className="pl-10 rtl:pr-10 rtl:pl-4"
-                    />
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t('الاسم', 'Name')}</TableHead>
-                        <TableHead>{t('المشروع', 'Project')}</TableHead>
-                        <TableHead>{t('التقدم', 'Progress')}</TableHead>
-                        <TableHead>{t('الميزانية', 'Budget')}</TableHead>
-                        <TableHead>{t('الحالة', 'Status')}</TableHead>
-                        <TableHead>{t('الإجراءات', 'Actions')}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {clients.map((client) => (
-                        <TableRow key={client.id}>
-                          <TableCell>{client.name[language]}</TableCell>
-                          <TableCell>{client.project[language]}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                <div
-                                  className="bg-[#D4AF37] h-2 rounded-full"
-                                  style={{ width: `${client.progress}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-sm">{client.progress}%</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>{formatCurrency(client.budget)}</TableCell>
-                          <TableCell>
-                            <Badge
-                              className={
-                                client.status === 'active'
-                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                              }
-                            >
-                              {client.status === 'active'
-                                ? t('نشط', 'Active')
-                                : t('مكتمل', 'Completed')}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              <Button variant="ghost" size="icon">
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon">
-                                <MessageSquare className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="text-red-600">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                {renderTable(clients.filter(c=>c.status==='active'))}
               </CardContent>
             </Card>
           </TabsContent>
 
-          {/* Chat Tab */}
-          <TabsContent value="chat">
-            <Card className="bg-white dark:bg-gray-800">
+          <TabsContent value="completed">
+            <Card>
               <CardContent className="p-6">
-                <h3 className="text-xl mb-6 text-[#1A1A1A] dark:text-white">
-                  {t('إدارة المحادثات', 'Message Management')}
-                </h3>
-                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                  <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p>
-                    {t(
-                      'اختر عميلاً من القائمة لبدء المحادثة',
-                      'Select a client from the list to start chatting'
-                    )}
-                  </p>
-                </div>
+                {renderTable(clients.filter(c=>c.status==='completed'),{completed:true})}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* -------------------- Modal Create Client -------------------- */}
+      {modalCreate && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
+            <h2 className="text-xl mb-4">{t('إنشاء عميل جديد','Create New Client')}</h2>
+            <div className="space-y-3">
+              <Input placeholder={t('اسم المشروع','Project Title')} value={form.project_title} onChange={(e)=>setForm({...form, project_title:e.target.value})}/>
+              <Input placeholder={t('اسم المستخدم','Username')} value={form.username} onChange={(e)=>setForm({...form, username:e.target.value})}/>
+              <Input type="password" placeholder={t('كلمة المرور','Password')} value={form.password} onChange={(e)=>setForm({...form, password:e.target.value})}/>
+              <Input type="number" placeholder={t('الميزانية','Budget')} value={form.budget} onChange={(e)=>setForm({...form, budget:e.target.value})}/>
+              <Input placeholder={t('الهاتف (اختياري)','Phone (Optional)')} value={form.phone} onChange={(e)=>setForm({...form, phone:e.target.value})}/>
+              <Input placeholder={t('العنوان (اختياري)','Address (Optional)')} value={form.address} onChange={(e)=>setForm({...form, address:e.target.value})}/>
+
+              <div className="flex justify-end gap-2 mt-4">
+                <Button variant="outline" onClick={()=>setModalCreate(false)}>{t('إلغاء','Cancel')}</Button>
+                <Button onClick={createClient} className="bg-[#D4AF37] text-white">{t('إنشاء','Create')}</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
+  );
+}
+
+function StatCard({ title, value, icon }: any){
+  return (
+    <Card>
+      <CardContent className="flex justify-between items-center p-6">
+        <div>
+          <p className="text-sm text-gray-500 mb-1">{title}</p>
+          <h3 className="text-2xl font-bold">{value}</h3>
+        </div>
+        <div className="w-12 h-12 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg">
+          {icon}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

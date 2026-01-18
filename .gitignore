@@ -2,15 +2,26 @@
 __pycache__/
 *.py[cod]
 *.sqlite3
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+env/
+venv/
+.venv/
+*.log
 
 # Django
 /media/
 /staticfiles/
 .env
 *.log
+*.pot
+*.py[cod]
 
 # VS Code
 .vscode/
+*.code-workspace
 
 # Environment
 venv/
@@ -28,6 +39,12 @@ frontend/node_modules/
 frontend/.vite/
 frontend/dist/
 frontend/.next/
+node_modules/
+build/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Python / Django
 backend/__pycache__/
@@ -39,3 +56,4 @@ backend/db.sqlite3
 .vscode/
 __pycache__/
 .DS_Store
+Thumbs.db

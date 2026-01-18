@@ -1,15 +1,36 @@
 from rest_framework import serializers
-from api.models import Client
+from api.models import Client, ProjectProgress
 from django.contrib.auth.models import User
 
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'email']
-
 class ClientSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    name = serializers.CharField(source='user.get_full_name', read_only=True)
+    progress = serializers.SerializerMethodField()
+    total = serializers.SerializerMethodField()
+    paid = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
 
     class Meta:
         model = Client
-        fields = '__all__'
+        fields = ['id','name','username','email','progress','total','paid','status',
+                  'phone','address','budget','created_at']
+
+    def get_progress(self, obj):
+        if hasattr(obj, 'project') and hasattr(obj.project, 'progress'):
+            return obj.project.progress.percentage
+        return 0
+
+    def get_total(self, obj):
+        if hasattr(obj, 'project'):
+            return float(obj.project.total_budget)
+        return 0
+
+    def get_paid(self, obj):
+        # لو عندك مكان لتخزين المدفوعات استخدمه هنا، حاليا بنرجع 0
+        return 0
+
+    def get_status(self, obj):
+        if hasattr(obj, 'project'):
+            return obj.project.status
+        return 'pending'

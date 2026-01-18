@@ -212,7 +212,7 @@ export function AboutPage() {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div className="text-center p-6">
               <div className="text-5xl text-[#D4AF37] mb-4">500+</div>
               <h4 className="mb-2">{t('مشروع مكتمل', 'Completed Projects')}</h4>
@@ -228,15 +228,6 @@ export function AboutPage() {
                 {t('خبرة واسعة في المجال', 'Extensive experience in the field')}
               </p>
             </div>
-
-            <div className="text-center p-6">
-              <div className="text-5xl text-[#D4AF37] mb-4">450+</div>
-              <h4 className="mb-2">{t('عميل راض', 'Satisfied Clients')}</h4>
-              <p className="text-white/70 text-sm">
-                {t('رضا العملاء أولويتنا', 'Customer satisfaction is our priority')}
-              </p>
-            </div>
-
             <div className="text-center p-6">
               <div className="text-5xl text-[#D4AF37] mb-4">50+</div>
               <h4 className="mb-2">{t('موظف محترف', 'Professional Employees')}</h4>

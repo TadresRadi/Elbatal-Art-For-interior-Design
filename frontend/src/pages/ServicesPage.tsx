@@ -16,24 +16,24 @@ import {
   Sofa,
 } from 'lucide-react';
 
-import { motion } from 'framer-motion';
+import { motion, easeInOut } from 'framer-motion';
 
 export function ServicesPage() {
   const { t, language } = useApp();
 
   const fadeUp = {
     hidden: { opacity: 0, y: 40 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: 'easeInOut' } },
+    show: { opacity: 1, y: 0, transition: { duration: 0.8, ease: easeInOut } },
   };
 
   const fadeLeft = {
     hidden: { opacity: 0, x: -60 },
-    show: { opacity: 1, x: 0, transition: { duration: 0.9, ease: 'easeInOut' } },
+    show: { opacity: 1, x: 0, transition: { duration: 0.9, ease: easeInOut } },
   };
 
   const fadeRight = {
     hidden: { opacity: 0, x: 60 },
-    show: { opacity: 1, x: 0, transition: { duration: 0.9, ease: 'easeInOut' } },
+    show: { opacity: 1, x: 0, transition: { duration: 0.9, ease: easeInOut } },
   };
 
   const iconAnim = {
@@ -50,7 +50,7 @@ export function ServicesPage() {
         en: 'Complete apartment finishing including all works from floors to ceilings',
       },
       image:
-        'https://images.unsplash.com/photo-1690489965043-ec15758cce71?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+        'https://images.unsplash.com/photo-1668365011614-9c4a49a0e89d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
       features: [
         { ar: 'تركيب الأرضيات (سيراميك، باركيه، رخام)', en: 'Floor installation (ceramic, parquet, marble)' },
         { ar: 'أعمال الدهانات والديكورات', en: 'Painting and decoration works' },
@@ -132,7 +132,7 @@ export function ServicesPage() {
         en: 'Plumbing and sanitation works with high efficiency',
       },
       image:
-        'https://images.unsplash.com/photo-1658760046471-896cbc719c9d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+        'https://images.unsplash.com/photo-1668365011614-9c4a49a0e89d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
       features: [
         { ar: 'تركيب الأدوات الصحية الفاخرة', en: 'Luxury sanitary ware installation' },
         { ar: 'أنظمة تسخين المياه', en: 'Water heating systems' },

@@ -215,7 +215,7 @@ export function NewsPage() {
                 <Button className="bg-[#D4AF37] hover:bg-[#B8941F] text-white self-start" asChild>
                   <a href="/ContactPage#contact">
                     {t('تواصل معانا', 'Contact Us')}
-                    <ArrowRight className="mr-2 h-4 w-4 rtl:rotate-180" />
+                    <ArrowRight className="mr-2 h-4 w-2 rtl:rotate-180" />
                   </a>
                 </Button>
               </CardContent>
@@ -261,11 +261,10 @@ export function NewsPage() {
 
                   <Button
                     variant="ghost"
-                    className="text-[#D4AF37] hover:text-[#B8941F] p-0 h-auto"
+                    className="text-[#D4AF37] hover:text-[#B8941F]"
                   >
 <a href="/ContactPage#contact">
                     {t('تواصل معانا', 'Contact Us')}
-                    <ArrowRight className="mr-2 h-4 w-4 rtl:rotate-180" />
                   </a>
                   </Button>
                 </CardContent>
@@ -296,7 +295,6 @@ export function NewsPage() {
             <Button className="bg-[#D4AF37] hover:bg-[#B8941F] text-white">
               <a href="/ContactPage#contact">
                     {t('تواصل معانا', 'Contact Us')}
-                    <ArrowRight className="mr-2 h-4 w-4 rtl:rotate-180" />
                   </a>
             </Button>
           </div>
