@@ -35,6 +35,7 @@ export function ClientDashboard() {
     const fetchData = async () => {
       try {
         const projectRes = await api.get('projects/');
+        console.log('PROJECT RESPONSE:', projectRes.data);
         setProjectData(projectRes.data[0] || null);
 
         const expensesRes = await api.get('expenses/');
@@ -43,11 +44,10 @@ export function ClientDashboard() {
         const messagesRes = await api.get('messages/');
         setMessages(messagesRes.data);
       } catch (error: any) {
+        console.error('Error fetching data:', error);
         if (error.response?.status === 401) {
           alert('Session expired, please login again.');
           window.location.hash = '#home';
-        } else {
-          console.error('Error fetching data:', error);
         }
       }
     };
@@ -91,9 +91,9 @@ export function ClientDashboard() {
           {t('لوحة تحكم العميل', 'Client Dashboard')}
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          {projectData
-            ? t('مرحباً، {{name}}', `Welcome, ${projectData.client_name}`)
-            : t('مرحباً', 'Welcome')}
+{projectData
+  ? t('مرحباً، {{name}}', `Welcome, ${projectData.client_username || projectData.client_name || projectData.user?.username }`)
+  : t('مرحباً', 'Welcome')}
         </p>
       </div>
       <Button

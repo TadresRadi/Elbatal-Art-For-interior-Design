@@ -36,7 +36,8 @@ class ClientCreateSerializer(serializers.Serializer):
         # 1️⃣ Create User
         user = User.objects.create_user(
             username=username,
-            password=password
+            password=password,
+            first_name=username
         )
 
         # 2️⃣ Create Profile

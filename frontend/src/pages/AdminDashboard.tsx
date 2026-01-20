@@ -213,7 +213,7 @@ const updateClient = async (id:number, updates: Partial<Client>) => {
       <TableBody>
         {list.map(c=>(
           <TableRow key={c.id}>
-            <TableCell>{c.name}</TableCell>
+            <TableCell>{c.name || c.username}</TableCell>
             <TableCell>{formatCurrency(c.total)}</TableCell>
             <TableCell>{formatCurrency(c.paid)}</TableCell>
             <TableCell>
