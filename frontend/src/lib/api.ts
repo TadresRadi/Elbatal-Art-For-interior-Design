@@ -8,11 +8,14 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  
   const token = localStorage.getItem('accessToken'); // التوكن اللي اتخزن بعد login
   if (token) {
     config.headers.Authorization = `Bearer ${token}`; // لازم Bearer قبل التوكن
   }
+  
   return config;
+  
 });
 
 export default api;

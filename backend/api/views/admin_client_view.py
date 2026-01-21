@@ -28,7 +28,11 @@ class AdminClientViewSet(viewsets.ModelViewSet):
         if project:
             project_data = {
                 'title': project.title,
-                'total_budget': str(project.total_budget)
+                'total_budget': str(project.total_budget),
+                'client_address': project.client.address,
+                'client_phone': project.client.phone,
+                'start_date': project.start_date,
+                'expected_end_date': project.expected_end_date
             }
         return Response({
             'id': client.id,

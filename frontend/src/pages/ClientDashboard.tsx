@@ -61,17 +61,21 @@ export function ClientDashboard() {
 
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return;
+const handleSendMessage = async () => {
+  if (!message.trim()) return;
 
-    try {
-      const res = await api.post('messages/', { text: message });
-      setMessages([...messages, res.data]);
-      setMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-    }
-  };
+  try {
+    const res = await api.post('messages/', {
+      content:  message
+    });
+
+    setMessages([... messages, res.data]);
+    setMessage('');
+  } catch (error: any) {
+    console.error('Error:', error);
+    alert(t('فشل إرسال الرسالة', 'Failed to send message'));
+  }
+};
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
@@ -114,27 +118,32 @@ export function ClientDashboard() {
             {projectData ? (
               <div className="flex items-start justify-between mb-6">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <Home className="h-6 w-6 text-[#D4AF37]" />
-                    <h2 className="text-xl text-[#1A1A1A] dark:text-white">
-                      {projectData.name}
-                    </h2>
-                  </div>
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <span>
-                        {t('البداية:', 'Start:')} {projectData.start_date}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <span>
-                        {t('الانتهاء المتوقع:', 'Expected End:')}{' '}
-                        {projectData.expected_end}
-                      </span>
-                    </div>
-                  </div>
+<div className="flex items-center gap-3 mb-2">
+  <Home className="h-6 w-6 text-[#D4AF37]" />
+  <div>
+    <h2 className="text-xl text-[#1A1A1A] dark:text-white">
+      {projectData.title} {/* اسم المشروع */}
+    </h2>
+    {/* هنا حطينا العنوان والهاتف جنب بعض */}
+    <p className="text-sm text-gray-600 dark:text-gray-400">
+      {projectData.client_address} - {t('Phone', 'رقم الهاتف')}: {projectData.client_phone}
+    </p>
+  </div>
+</div>
+<div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+  <div className="flex items-center gap-2">
+    <Clock className="h-4 w-4" />
+<span>
+  {t('البداية:', 'Start:')} {projectData.start_date || t('غير محدد','Not set')}
+</span>
+  </div>
+  <div className="flex items-center gap-2">
+    <Clock className="h-4 w-4" />
+<span>
+  {t('الانتهاء المتوقع:', 'Expected End:')} {projectData.expected_end_date || t('غير محدد','Not set')}
+</span>
+  </div>
+</div>
                 </div>
                 <div className="px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm">
                   {projectData.status}
@@ -167,7 +176,7 @@ export function ClientDashboard() {
         </Card>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -221,6 +230,26 @@ export function ClientDashboard() {
               </div>
             </CardContent>
           </Card>
+
+         {projectData && (
+  <Card className="bg-white dark:bg-gray-800">
+    <CardContent className="p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+            {t('الميزانية', 'Budget')}
+          </p>
+          <h3 className="text-2xl text-[#1A1A1A] dark:text-white">
+            {formatCurrency(parseFloat(projectData.client_budget || '0'))}
+          </h3>
+        </div>
+        <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+          <DollarSign className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+)} 
         </div>
 
         {/* Expenses Table */}
@@ -288,25 +317,25 @@ export function ClientDashboard() {
                   <div
                     key={msg.id}
                     className={`flex ${
-                      msg.from === 'client' ? 'justify-end' : 'justify-start'
+                      msg.sender === 'client' ? 'justify-end' : 'justify-start'
                     }`}
                   >
                     <div
                       className={`max-w-[80%] p-3 rounded-lg ${
-                        msg.from === 'client'
+                        msg.sender === 'client'
                           ? 'bg-[#D4AF37] text-white'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
                       }`}
                     >
-                      <p className="text-sm">{msg.text}</p>
+                      <p className="text-sm">{msg.content}</p>
                       <p
                         className={`text-xs mt-1 ${
-                          msg.from === 'client'
+                          msg.sender === 'client'
                             ? 'text-white/70'
                             : 'text-gray-500 dark:text-gray-400'
                         }`}
                       >
-                        {msg.time}
+                        {new Date(msg.timestamp).toLocaleTimeString()}
                       </p>
                     </div>
                   </div>

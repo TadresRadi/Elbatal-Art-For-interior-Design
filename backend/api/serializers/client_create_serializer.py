@@ -18,6 +18,10 @@ class ClientCreateSerializer(serializers.Serializer):
     budget = serializers.DecimalField(max_digits=12, decimal_places=2)
     project_title = serializers.CharField(max_length=150)
 
+    # ✅ إضافة الحقول الجديدة
+    start_date = serializers.DateField(required=False , allow_null=True)
+    expected_end_date = serializers.DateField(required=False , allow_null=True)
+
     def validate_username(self, value):
         if User.objects.filter(username=value).exists():
             raise serializers.ValidationError("Username already exists.")
@@ -33,20 +37,23 @@ class ClientCreateSerializer(serializers.Serializer):
         budget = validated_data['budget']
         project_title = validated_data['project_title']
 
-        # 1️⃣ Create User
+        start_date = validated_data.get('start_date', None)
+        expected_end_date = validated_data.get('expected_end_date', None)
+
+        # 1️⃣ إنشاء User
         user = User.objects.create_user(
             username=username,
             password=password,
             first_name=username
         )
 
-        # 2️⃣ Create Profile
+        # 2️⃣ إنشاء Profile
         UserProfile.objects.create(
             user=user,
             role='client'
         )
 
-        # 3️⃣ Create Client
+        # 3️⃣ إنشاء Client
         client = Client.objects.create(
             user=user,
             phone=phone,
@@ -54,14 +61,16 @@ class ClientCreateSerializer(serializers.Serializer):
             budget=budget
         )
 
-        # 4️⃣ Create Project (خزن الـ instance)
+        # 4️⃣ إنشاء Project مع start_date و expected_end
         project_obj = Project.objects.create(
             client=client,
             title=project_title,
-            total_budget=budget
+            total_budget=budget,
+            start_date=start_date,
+            expected_end_date=expected_end_date
         )
 
-        # 5️⃣ Create Progress automatically (استخدم الـ instance)
+        # 5️⃣ إنشاء Progress تلقائيًا
         ProjectProgress.objects.create(
             project=project_obj,
             percentage=0
