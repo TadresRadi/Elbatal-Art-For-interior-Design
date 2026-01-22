@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from api.views import (
-    ClientViewSet, MeView, ProjectViewSet, AdminProgressViewSet, AdminExpenseViewSet,AdminClientViewSet, AdminDashboardView, ExpenseViewSet, ProjectProgressViewSet, MessageViewSet
+    ClientViewSet, MeView, ProjectViewSet, AdminProgressViewSet, AdminExpenseViewSet,AdminClientViewSet, AdminDashboardView, ClientDashboardView, ExpenseViewSet, ProjectProgressViewSet, MessageViewSet
 )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -26,6 +26,7 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/admin/dashboard/', AdminDashboardView.as_view()),
+    path('api/client/dashboard/', ClientDashboardView.as_view()),
     path('auth/me/', MeView.as_view()),
     path('login/', CustomAuthToken.as_view(), name='custom-login'),
 

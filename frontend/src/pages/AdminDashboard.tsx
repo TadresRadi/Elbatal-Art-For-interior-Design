@@ -1,52 +1,15 @@
 import { useApp } from '../lib/context';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import api from '../lib/api';
-import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Badge } from '../components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-} from '../components/ui/table';
-import { Textarea } from '../components/ui/textarea';
-import { Label } from '../components/ui/label';
-
-import {
-  LogOut, Users, Briefcase, DollarSign, TrendingUp, MessageSquare,
-  Edit, Trash2, Plus, CheckCircle, FileText, Calendar, Percent,
-  CreditCard, AlertCircle
-} from 'lucide-react';
-
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, Legend
-} from 'recharts';
-
-const COLORS = ['#D4AF37', '#B8941F', '#F4E4B8', '#C9A961'];
-
-type ChatMessage = {
-  id: number;
-  content: string;
-  sender: 'admin' | 'client';
-  timestamp: string;
-};
-
-type Client = {
-  id: number;
-  name: string;
-  username: string;
-  password?: string;
-  progress: number;
-  paid: number;
-  total: number;
-  invoice?: string;
-  paidAt?: string;
-  notes?: string;
-  status: 'active' | 'completed' | 'pending';
-  createdAt: string;
-  messages?: ChatMessage[];
-};
+import { Users, Briefcase, DollarSign, TrendingUp } from 'lucide-react';
+import { AdminHeader } from './admin/components/AdminHeader';
+import { StatCard } from './admin/components/StatCard';
+import { ClientsTable } from './admin/components/ClientsTable';
+import { ChatModal } from './admin/components/ChatModal';
+import { CreateClientModal } from './admin/components/CreateClientModal';
+import type { Client, CreateClientForm } from './admin/types';
 
 export function AdminDashboard() {
   const { t, language } = useApp();
@@ -59,8 +22,15 @@ export function AdminDashboard() {
   const [modalEdit, setModalEdit] = useState<Client | null>(null);
   const [modalChat, setModalChat] = useState<Client | null>(null);
 
-  const [form, setForm] = useState({
-    username: '', password: '', project_title: '', budget: '', phone: '', address: ''
+  const [form, setForm] = useState<CreateClientForm>({
+    username: '',
+    password: '',
+    project_title: '',
+    budget: '',
+    phone: '',
+    address: '',
+    start_date: '',
+    expected_end_date: ''
   });
 
   const [editForm, setEditForm] = useState({
@@ -70,7 +40,115 @@ export function AdminDashboard() {
   });
 
   const [message, setMessage] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
+
+  const handleEditClient = (client: Client) => {
+    setModalEdit(client);
+    setEditForm({
+      name: client.name,
+      username: client.username,
+      password: client.password || '',
+      paid: client.paid.toString(),
+      paidAt: client.paidAt || '',
+      invoice: client.invoice || '',
+      progress: client.progress.toString(),
+      notes: client.notes || '',
+      total: client.total.toString(),
+    });
+  };
+
+  const handleOpenChat = (client: Client) => {
+    setModalChat(client);
+  };
+
+  const handleCompleteClient = async (clientId: number) => {
+    try {
+      await api.post(`admin/clients/${clientId}/complete/`);
+      setClients(clients.map(cl => cl.id === clientId ? { ...cl, status: 'completed', progress: 100 } : cl));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = '/#login';
+  };
+
+  const handleSendMessage = async () => {
+    if (!modalChat) return alert('العميل غير محدد');
+    if (!message.trim() && !selectedFile) return alert('Please enter a message or select a file');
+
+    try {
+      const formData = new FormData();
+      formData.append('client', modalChat.id.toString());
+      if (message.trim()) {
+        formData.append('content', message);
+      }
+      if (selectedFile) {
+        formData.append('file', selectedFile);
+      }
+
+      console.log('Sending message with data:', {
+        client: modalChat.id,
+        content: message,
+        hasFile: !!selectedFile,
+      });
+
+      const response = await api.post('messages/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      console.log('Message sent successfully:', response.data);
+
+      setMessage('');
+      setSelectedFile(null);
+
+      try {
+        const res = await api.get(`messages/?client_id=${modalChat.id}`);
+        console.log('Messages after refresh:', res.data);
+        setModalChat(prev => prev ? { ...prev, messages: res.data } : null);
+      } catch (err) {
+        console.error('Error refreshing messages:', err);
+      }
+    } catch (err: any) {
+      console.error('Error sending message:', err);
+      console.error('Error response:', err.response);
+      console.error('Error status:', err.response?.status);
+      console.error('Error data:', err.response?.data);
+
+      if (err.response?.data) {
+        alert('فشل إرسال الرسالة: ' + JSON.stringify(err.response.data));
+      } else {
+        alert('حدث خطأ أثناء إرسال الرسالة: ' + err.message);
+      }
+    }
+  };
+
+  const handleTestMessage = async () => {
+    if (!modalChat) return;
+
+    try {
+      console.log('Creating test message for client:', modalChat.id);
+      const response = await api.post('messages/', {
+        client: modalChat.id,
+        content: `Test message from admin at ${new Date().toLocaleString()}`,
+      });
+
+      console.log('Test message created:', response.data);
+
+      const res = await api.get(`messages/?client_id=${modalChat.id}`);
+      console.log('Messages after test creation:', res.data);
+      setModalChat(prev => prev ? { ...prev, messages: res.data } : null);
+    } catch (err: any) {
+      console.error('Error creating test message:', err);
+      console.error('Error response:', err.response);
+      alert('Failed to create test message');
+    }
+  };
 
   useEffect(() => {
     const loadClients = async () => {
@@ -83,6 +161,63 @@ export function AdminDashboard() {
     };
     loadClients();
   }, []);
+
+  useEffect(() => {
+    const loadChat = async () => {
+      if (!modalChat) return;
+
+      try {
+        console.log('=== CHAT LOADING DEBUG ===');
+        console.log('Loading chat for client:', modalChat.id);
+        console.log('Client object:', modalChat);
+
+        const res = await api.get(`messages/?client_id=${modalChat.id}`);
+        console.log('Raw API response:', res);
+        console.log('Response data:', res.data);
+        console.log('Response data type:', typeof res.data);
+        console.log('Is array?', Array.isArray(res.data));
+        console.log('Number of messages:', res.data?.length || 0);
+
+        if (res.data && res.data.length > 0) {
+          console.log('First message:', res.data[0]);
+          console.log('All message IDs:', res.data.map((m: any) => m.id));
+        }
+
+        // Ensure messages is always an array
+        const messages = Array.isArray(res.data) ? res.data : [];
+        console.log('Final messages array:', messages);
+
+        setModalChat(prev => {
+          console.log('Previous modalChat:', prev);
+          const updated = prev ? { ...prev, messages: messages } : null;
+          console.log('Updated modalChat:', updated);
+          return updated;
+        });
+
+        // Auto-scroll to bottom after loading
+        setTimeout(() => {
+          if (chatRef.current) {
+            chatRef.current.scrollTop = chatRef.current.scrollHeight;
+          }
+        }, 100);
+      } catch (err: any) {
+        console.error('=== CHAT LOAD ERROR ===');
+        console.error('Error:', err);
+        console.error('Error response:', err.response);
+        console.error('Error status:', err.response?.status);
+        console.error('Error data:', err.response?.data);
+
+        // Set empty messages array on error to prevent undefined issues
+        setModalChat(prev =>
+          prev ? { ...prev, messages: [] } : null
+        );
+      }
+    };
+
+    loadChat();
+  }, [modalChat?.id]);
+
+  useEffect(() => { if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [modalChat?.messages]);
 
   const stats = useMemo(() => ({
     total: clients.length,
@@ -130,7 +265,6 @@ export function AdminDashboard() {
       : date.toLocaleDateString('en-US');
   };
 
-  // -------------------- CREATE CLIENT --------------------
   const createClient = async () => {
     if (!form.username.trim() || !form.password.trim() || !form.project_title.trim() || !form.budget) {
       return alert(t('يرجى ملء جميع الحقول المطلوبة', 'Please fill all required fields'));
@@ -147,7 +281,7 @@ export function AdminDashboard() {
         expected_end_date: form.expected_end_date
       });
       setClients([res.data, ...clients]);
-      setForm({ username: '', password: '', project_title: '', budget: '', phone: '', address: '' });
+      setForm({ username: '', password: '', project_title: '', budget: '', phone: '', address: '', start_date: '', expected_end_date: '' });
       setModalCreate(false);
       setTab('clients');
       alert(t('تم إنشاء العميل بنجاح', 'Client created successfully'));
@@ -161,7 +295,6 @@ export function AdminDashboard() {
     }
   };
 
-  // -------------------- UPDATE / DELETE / MESSAGE --------------------
   const updateClient = async (id: number, updates: Partial<Client>) => {
     try {
       const res = await api.patch(`admin/clients/${id}/`, updates);
@@ -181,107 +314,14 @@ export function AdminDashboard() {
     }
   };
 
-  useEffect(() => {
-    const loadChat = async () => {
-      if (!modalChat) return alert("العميل غير محدد");;
-
-      try {
-        const res = await api.get(`messages/?client_id=${modalChat.id}`);
-        setModalChat(prev =>
-          prev ? { ...prev, messages: res.data } : null
-        );
-      } catch (err) {
-        console.error('Chat load error:', err);
-      }
-    };
-
-    loadChat();
-  }, [modalChat?.id]);
-
-  useEffect(() => { if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [modalChat?.messages]);
-
-  // -------------------- RENDER TABLE --------------------
-  const renderTable = (list: Client[], options: { completed?: boolean, deleted?: boolean } = {}) => (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{t('الاسم', 'Name')}</TableHead>
-          <TableHead>{t('التكلفة الكلية', 'Total Cost')}</TableHead>
-          <TableHead>{t('المدفوع', 'Paid')}</TableHead>
-          <TableHead>{t('نسبة الإنجاز', 'Progress')}</TableHead>
-          <TableHead>{t('الحالة', 'Status')}</TableHead>
-          <TableHead>{t('الإجراءات', 'Actions')}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {list.map(c => (
-          <TableRow key={c.id}>
-            <TableCell>{c.name || c.username}</TableCell>
-            <TableCell>{formatCurrency(c.total)}</TableCell>
-            <TableCell>{formatCurrency(c.paid)}</TableCell>
-            <TableCell>
-              <div className="flex items-center gap-2">
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-green-600 h-2 rounded-full" style={{ width: `${c.progress}%` }} />
-                </div>
-                <span>{c.progress}%</span>
-              </div>
-            </TableCell>
-            <TableCell><Badge>{c.status === 'active' ? t('نشط', 'Active') : c.status === 'completed' ? t('مكتمل', 'Completed') : t('معلق', 'Pending')}</Badge></TableCell>
-            <TableCell className="flex gap-1">
-              {!options.deleted && <>
-                <Button variant="ghost" size="icon" onClick={() => {
-                  setModalEdit(c); setEditForm({
-                    name: c.name, username: c.username, password: c.password || '',
-                    paid: c.paid.toString(), paidAt: c.paidAt || '', invoice: c.invoice || '',
-                    progress: c.progress.toString(), notes: c.notes || '', total: c.total.toString()
-                  })
-                }} title={t('تعديل العميل', 'Edit Client')}><Edit className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" onClick={() => setModalChat(c)} title={t('فتح الشات', 'Open Chat')}>
-                  <MessageSquare className="h-4 w-4" />
-                </Button>
-                {!options.completed && <Button variant="ghost" size="icon"
-                  onClick={async () => {
-                    try {
-                      await api.post(`admin/clients/${c.id}/complete/`);
-                      setClients(clients.map(cl => cl.id === c.id ? { ...cl, status: 'completed', progress: 100 } : cl));
-                    } catch (err) {
-                      console.error(err);
-                    }
-                  }}
-                  title={t('تم الإكمال', 'Mark as Completed')}>
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                </Button>}
-                <Button variant="ghost" size="icon" onClick={() => deleteClient(c.id)} title={t('حذف العميل', 'Delete Client')}><Trash2 className="h-4 w-4 text-red-600" /></Button>
-              </>}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-
-  // -------------------- RENDER --------------------
   return (
     <div className="min-h-screen pt-20 bg-gray-50 dark:bg-gray-900">
 
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b">
-        <div className="container mx-auto px-6 py-6 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl">{t('لوحة تحكم المدير', 'Admin Dashboard')}</h1>
-            <p className="text-gray-500">{t('مرحباً، مدير النظام', 'Welcome, Administrator')}</p>
-          </div>
-          <div className="flex gap-3">
-            <Button className="bg-[#D4AF37] hover:bg-[#B8941F] text-white" onClick={() => setModalCreate(true)}>
-              <Plus className="mr-2 h-4 w-4" /> {t('إنشاء حساب عميل', 'New Client')}
-            </Button>
-            <Button variant="outline" onClick={() => { localStorage.clear(); window.location.href = '/#login'; }}>
-              <LogOut className="mr-2 h-4 w-4" /> {t('خروج', 'Logout')}
-            </Button>
-          </div>
-        </div>
-      </div>
+      <AdminHeader
+        t={t}
+        onCreateClient={() => setModalCreate(true)}
+        onLogout={handleLogout}
+      />
 
       {/* Tabs */}
       <div className="container mx-auto px-6 py-8">
@@ -304,7 +344,15 @@ export function AdminDashboard() {
           <TabsContent value="clients">
             <Card>
               <CardContent className="p-6">
-                {renderTable(clients.filter(c => c.status === 'active'))}
+                <ClientsTable
+                  list={clients.filter(c => c.status === 'active')}
+                  t={t}
+                  formatCurrency={formatCurrency}
+                  onEdit={handleEditClient}
+                  onOpenChat={handleOpenChat}
+                  onComplete={handleCompleteClient}
+                  onDelete={deleteClient}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -312,111 +360,41 @@ export function AdminDashboard() {
           <TabsContent value="completed">
             <Card>
               <CardContent className="p-6">
-                {renderTable(clients.filter(c => c.status === 'completed'), { completed: true })}
+                <ClientsTable
+                  list={clients.filter(c => c.status === 'completed')}
+                  t={t}
+                  formatCurrency={formatCurrency}
+                  onEdit={handleEditClient}
+                  onOpenChat={handleOpenChat}
+                  onComplete={handleCompleteClient}
+                  onDelete={deleteClient}
+                  completed
+                />
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-        {modalChat && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 w-full max-w-lg rounded-lg p-4 flex flex-col">
-
-              <div className="flex justify-between items-center border-b pb-2 mb-2">
-                <h3 className="font-bold">
-                  {t('محادثة مع', 'Chat with')} {modalChat.username}
-                </h3>
-                <Button size="sm" variant="ghost" onClick={() => setModalChat(null)}>✕</Button>
-              </div>
-
-              <div ref={chatRef} className="flex-1 overflow-y-auto space-y-2 mb-3">
-                {modalChat.messages?.map(m => (
-                  <div
-                    key={m.id}
-                    className={`p-2 rounded-lg max-w-[75%] ${m.sender === 'admin'
-                        ? 'bg-yellow-200 ml-auto text-right'
-                        : 'bg-gray-200 mr-auto'
-                      }`}
-                  >
-                    <p>{m.content}</p>
-                    <small className="text-xs text-gray-500">
-                      {new Date(m.timestamp).toLocaleString()}
-                    </small>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex gap-2">
-                <Input
-                  value={message}
-                  onChange={e => setMessage(e.target.value)}
-                  placeholder={t('اكتب رسالة...', 'Type message...')}
-                />
-<Button onClick={async () => {
-  if (!modalChat) return alert("العميل غير محدد");
-
-  try {
-    await api.post('messages/', {
-      content: message,       // النص اللي هيتبعت
-      client_id: modalChat.id // هنا المهم
-    });
-    setMessage(''); // امسح الصندوق بعد الإرسال
-    // ممكن تحدث الرسائل مباشرة بعد الإرسال
-    const newMessage = message; // احفظ القيمة أولاً
-    setMessage('');
-    setModalChat(prev => prev ? { ...prev, messages: [...(prev.messages || []), { id: Date.now(), sender: 'admin', content: newMessage, timestamp: new Date().toISOString() }] } : null);
-  } catch (err) {
-    console.error('Error sending message:', err);
-    alert('حدث خطأ أثناء إرسال الرسالة');
-  }
-}}>
-  إرسال
-</Button>
-              </div>
-
-            </div>
-          </div>
-        )}
+        <ChatModal
+          modalChat={modalChat}
+          t={t}
+          onClose={() => setModalChat(null)}
+          chatRef={chatRef}
+          message={message}
+          setMessage={setMessage}
+          selectedFile={selectedFile}
+          setSelectedFile={setSelectedFile}
+          onSendMessage={handleSendMessage}
+          onTestMessage={handleTestMessage}
+        />
+        <CreateClientModal
+          isOpen={modalCreate}
+          onClose={() => setModalCreate(false)}
+          form={form}
+          setForm={setForm}
+          onCreateClient={createClient}
+          t={t}
+        />
       </div>
-
-      {/* -------------------- Modal Create Client -------------------- */}
-      {modalCreate && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl mb-4">{t('إنشاء عميل جديد', 'Create New Client')}</h2>
-            <div className="space-y-3">
-              <Input placeholder={t('اسم المشروع', 'Project Title')} value={form.project_title} onChange={(e) => setForm({ ...form, project_title: e.target.value })} />
-              <Input placeholder={t('اسم المستخدم', 'Username')} value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
-              <Input type="password" placeholder={t('كلمة المرور', 'Password')} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-              <Input type="number" placeholder={t('الميزانية', 'Budget')} value={form.budget} onChange={(e) => setForm({ ...form, budget: e.target.value })} />
-              <Input placeholder={t('الهاتف (اختياري)', 'Phone (Optional)')} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-              <Input placeholder={t('العنوان (اختياري)', 'Address (Optional)')} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-              <Input type="date" placeholder="Start Date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
-              <Input type="date" placeholder="Expected End Date" value={form.expected_end_date} onChange={(e) => setForm({ ...form, expected_end_date: e.target.value })} />
-              <div className="flex justify-end gap-2 mt-4">
-                <Button variant="outline" onClick={() => setModalCreate(false)}>{t('إلغاء', 'Cancel')}</Button>
-                <Button onClick={createClient} className="bg-[#D4AF37] text-white">{t('إنشاء', 'Create')}</Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
-  );
-}
-
-function StatCard({ title, value, icon }: any) {
-  return (
-    <Card>
-      <CardContent className="flex justify-between items-center p-6">
-        <div>
-          <p className="text-sm text-gray-500 mb-1">{title}</p>
-          <h3 className="text-2xl font-bold">{value}</h3>
-        </div>
-        <div className="w-12 h-12 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg">
-          {icon}
-        </div>
-      </CardContent>
-    </Card>
   );
 }

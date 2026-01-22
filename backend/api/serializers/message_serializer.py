@@ -6,7 +6,6 @@ class MessageSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
     content = serializers.CharField(required=False, allow_blank=True)
     # ملف مرفق اختياري
-    file = serializers.FileField(required=False, allow_null=True)
 
     class Meta:
         model = Message
@@ -21,7 +20,6 @@ class MessageSerializer(serializers.ModelSerializer):
             return obj.file.url
         return None
         
-
     def validate_file(self, value):
         if not value:
             return value
@@ -37,10 +35,3 @@ class MessageSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Unsupported file type.')
 
         return value
-    def get_file_url(self, obj):
-        request = self.context.get('request')
-        if obj.file:
-            if request is not None:
-                return request.build_absolute_uri(obj.file.url)
-            return obj.file.url
-        return None

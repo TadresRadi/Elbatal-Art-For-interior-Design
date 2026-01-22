@@ -5,8 +5,7 @@ from rest_framework import status
 from django.contrib.auth.models import User
 from accounts.models import UserProfile
 from api.models import Client
-from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.authtoken.models import Token
+from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 
 class MeView(APIView):
@@ -37,10 +36,9 @@ class MeView(APIView):
 
         return Response(data)
     
-class CustomAuthToken(ObtainAuthToken):
+class CustomAuthToken(APIView):
 
     def post(self, request, *args, **kwargs):
-        response = super().post(request, *args, **kwargs)
         username = request.data.get('username')
         password = request.data.get('password')
 
@@ -53,9 +51,10 @@ class CustomAuthToken(ObtainAuthToken):
 
         # إذا كان admin، يسمح له بالدخول
         if user.is_superuser or user.is_staff:
-            token, created = Token.objects.get_or_create(user=user)
+            refresh = RefreshToken.for_user(user)
             return Response({
-                'token': token.key,
+                'token': str(refresh.access_token),
+                'refresh': str(refresh),
                 'user_id': user.id,
                 'username': user.username,
                 'role': 'admin'
@@ -69,10 +68,11 @@ class CustomAuthToken(ObtainAuthToken):
         except Client.DoesNotExist:
             return Response({'detail': 'This account is not a client.'}, status=status.HTTP_403_FORBIDDEN)
 
-        # إنشاء token
-        token, created = Token.objects.get_or_create(user=user)
+        # إنشاء JWT tokens
+        refresh = RefreshToken.for_user(user)
         return Response({
-            'token': token.key,
+            'token': str(refresh.access_token),
+            'refresh': str(refresh),
             'user_id': user.id,
             'username': user.username,
             'role': 'client',

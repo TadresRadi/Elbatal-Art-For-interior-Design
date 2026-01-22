@@ -34,17 +34,38 @@ export function ClientDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const projectRes = await api.get('projects/');
-        console.log('PROJECT RESPONSE:', projectRes.data);
-        setProjectData(projectRes.data[0] || null);
+        console.log('Fetching client dashboard data...');
+        const dashboardRes = await api.get('client/dashboard/');
+        console.log('DASHBOARD RESPONSE:', dashboardRes.data);
+        
+        if (dashboardRes.data.project) {
+          console.log('Project data:', dashboardRes.data.project);
+          setProjectData(dashboardRes.data.project);
+        } else {
+          console.log('No project data found');
+        }
+        
+        if (dashboardRes.data.expenses) {
+          console.log('Expenses data:', dashboardRes.data.expenses);
+          setExpenses(dashboardRes.data.expenses);
+        } else {
+          console.log('No expenses data found');
+        }
 
-        const expensesRes = await api.get('expenses/');
-        setExpenses(expensesRes.data);
-
-        const messagesRes = await api.get('messages/');
-        setMessages(messagesRes.data);
+        // Get client's own messages
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        console.log('User data from localStorage:', user);
+        if (user.client_id) {
+          console.log('Fetching messages for client_id:', user.client_id);
+          const messagesRes = await api.get(`messages/?client_id=${user.client_id}`);
+          console.log('Messages response:', messagesRes.data);
+          setMessages(messagesRes.data);
+        } else {
+          console.log('No client_id found in user data');
+        }
       } catch (error: any) {
         console.error('Error fetching data:', error);
+        console.error('Error response:', error.response);
         if (error.response?.status === 401) {
           alert('Session expired, please login again.');
           window.location.hash = '#home';
@@ -65,14 +86,21 @@ const handleSendMessage = async () => {
   if (!message.trim()) return;
 
   try {
+    // Get user info to extract client_id
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    
     const res = await api.post('messages/', {
-      content:  message
+      content: message,
+      client: user?.client_id  // Changed from client_id to client
     });
 
-    setMessages([... messages, res.data]);
+    setMessages([...messages, res.data]);
     setMessage('');
   } catch (error: any) {
     console.error('Error:', error);
+    console.error('Error response:', error.response);
+    console.error('Error data:', error.response?.data);
     alert(t('فشل إرسال الرسالة', 'Failed to send message'));
   }
 };
@@ -302,9 +330,9 @@ const handleSendMessage = async () => {
         </div>
 
         {/* Chat */}
-        <div>
-          <Card className="bg-white dark:bg-gray-800 h-[600px] flex flex-col">
-            <CardContent className="p-6 flex-1 flex flex-col">
+        <div className="h-[600px] flex flex-col">
+          <Card className="bg-white dark:bg-gray-800 flex-1 flex flex-col overflow-hidden">
+            <div className="p-6 flex flex-col h-full">
               <div className="flex items-center gap-3 mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                 <MessageSquare className="h-6 w-6 text-[#D4AF37]" />
                 <h3 className="text-xl text-[#1A1A1A] dark:text-white">
@@ -312,7 +340,7 @@ const handleSendMessage = async () => {
                 </h3>
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+              <div className="flex-1 overflow-y-auto space-y-4 mb-4" style={{ maxHeight: 'calc(100% - 180px)' }}>
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
@@ -321,13 +349,43 @@ const handleSendMessage = async () => {
                     }`}
                   >
                     <div
-                      className={`max-w-[80%] p-3 rounded-lg ${
+                      className={`max-w-[80%] p-3 rounded-lg break-words ${
                         msg.sender === 'client'
                           ? 'bg-[#D4AF37] text-white'
                           : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
                       }`}
                     >
-                      <p className="text-sm">{msg.content}</p>
+                      <p className="text-sm break-words">{msg.content}</p>
+                      {msg.file_url && (
+                        <div className="mt-2">
+                          {msg.file_url.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                            <img
+                              src={msg.file_url}
+                              alt="Attachment"
+                              className="max-w-full h-auto rounded-lg cursor-pointer"
+                              onClick={() => window.open(msg.file_url, '_blank')}
+                            />
+                          ) : msg.file_url.match(/\.pdf$/i) ? (
+                            <a
+                              href={msg.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-blue-600 hover:text-blue-800 underline"
+                            >
+                              📄 {t('عرض PDF', 'View PDF')}
+                            </a>
+                          ) : (
+                            <a
+                              href={msg.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-blue-600 hover:text-blue-800 underline"
+                            >
+                              📎 {t('عرض الملف', 'View File')}
+                            </a>
+                          )}
+                        </div>
+                      )}
                       <p
                         className={`text-xs mt-1 ${
                           msg.sender === 'client'
@@ -362,7 +420,7 @@ const handleSendMessage = async () => {
                   <Send className="h-5 w-5" />
                 </Button>
               </div>
-            </CardContent>
+            </div>
           </Card>
         </div>
       </div>

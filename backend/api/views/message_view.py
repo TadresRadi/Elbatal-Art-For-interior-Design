@@ -15,9 +15,9 @@ class MessageViewSet(viewsets.ModelViewSet):
         if hasattr(user, 'client'):
             return Message.objects.filter(client=user.client).order_by('timestamp')
         # ادمن: ممكن يحدد العميل عبر query param
-        client_id = self.request.query_params.get('client_id')
-        if client_id:
-            return Message.objects.filter(client_id=client_id).order_by('timestamp')
+        client = self.request.query_params.get('client_id')
+        if client:
+            return Message.objects.filter(client=client).order_by('timestamp')
         return Message.objects.none()
 
     def perform_create(self, serializer):
@@ -29,11 +29,11 @@ class MessageViewSet(viewsets.ModelViewSet):
             sender = 'client'
         else:
             # admin: يدعم client or client_id
-            client_id = self.request.data.get('client_id') or self.request.data.get('client_id')
-            if not client_id:
+            client = self.request.data.get('client') or self.request.data.get('client_id')
+            if not client:
                 raise serializers.ValidationError({"client": "This field is required for admin users."})
             try:
-                client = Client.objects.get(id=client_id)
+                client = Client.objects.get(id=client)
             except Client.DoesNotExist:
                 raise serializers.ValidationError({"client": "Invalid client ID."})
             sender = 'admin'

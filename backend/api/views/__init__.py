@@ -3,7 +3,7 @@ from .project_view import ProjectViewSet
 from .expense_view import ExpenseViewSet
 from .progress_view import ProjectProgressViewSet
 from .message_view import MessageViewSet
-from .dashboard_view import AdminDashboardView
+from .dashboard_view import AdminDashboardView, ClientDashboardView
 from .admin_client_view import AdminClientViewSet
 from .admin_expense_view import AdminExpenseViewSet
 from .admin_progress_view import AdminProgressViewSet

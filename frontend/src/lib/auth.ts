@@ -6,12 +6,12 @@ interface LoginData {
 }
 
 export const login = async (data: LoginData) => {
-  const response = await api.post('token/', data);
-  const { access, refresh } = response.data;
+  const response = await api.post('login/', data);
+  const { token, refresh } = response.data;
 
-  // خزن الـ tokens
-  localStorage.setItem('access_token', access);
-  localStorage.setItem('refresh_token', refresh);
+  // Store the tokens
+  localStorage.setItem('accessToken', token);
+  localStorage.setItem('refreshToken', refresh);
 
   return response.data;
 };

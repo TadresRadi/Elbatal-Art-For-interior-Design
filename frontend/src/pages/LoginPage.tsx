@@ -29,24 +29,26 @@ export function LoginPage() {
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-  try {
-    const response = await api.post('auth/login/', {
-      username: credentials.username,
-      password: credentials.password,
-    });
+    try {
+      const response = await api.post('login/', {
+        username: credentials.username,
+        password: credentials.password,
+      });
 
-    const accessToken = response.data.access;
-    localStorage.setItem('accessToken', accessToken);
+      const token = response.data.token;
+      const refresh = response.data.refresh;
+      localStorage.setItem('accessToken', token);
+      localStorage.setItem('refreshToken', refresh);
 
-    // 🔹 دلوقتي نجيب بيانات المستخدم من auth/me/
-    const meResponse = await api.get('auth/me/');
-    const user = meResponse.data;
+      // 🔹 دلوقتي نجيب بيانات المستخدم من auth/me/
+      const meResponse = await api.get('auth/me/');
+      const user = meResponse.data;
 
-    localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('user', JSON.stringify(user));
 
     // 🔹 نحدد الـ dashboard بناءً على role
     if (user.role === 'admin') {
@@ -57,9 +59,19 @@ const handleSubmit = async (e: React.FormEvent) => {
       alert('Role not recognized');
     }
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
-    alert('Login failed');
+    console.error('Error response:', error.response);
+    console.error('Error status:', error.response?.status);
+    console.error('Error data:', error.response?.data);
+    
+    if (error.response?.status === 401) {
+      alert('Invalid credentials. Please check your username and password.');
+    } else if (error.response?.data?.detail) {
+      alert(error.response.data.detail);
+    } else {
+      alert('Login failed: ' + (error.message || 'Unknown error'));
+    }
   } finally {
     setIsLoading(false);
   }

@@ -1,5 +1,6 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from api.permissions import IsAdmin
 from django.db.models import Sum
 
@@ -51,4 +52,64 @@ class AdminDashboardView(APIView):
             "total_expenses": total_expenses,
             "projects": projects_data,
             "clients": clients_data
+        })
+
+class ClientDashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        
+        # Get the client associated with this user
+        try:
+            client = Client.objects.get(user=user)
+        except Client.DoesNotExist:
+            return Response({'error': 'Client not found'}, status=404)
+        
+        # Get client's project (OneToOne relationship)
+        project_data = None
+        try:
+            project = client.project  # Using related_name from Project model
+            project_data = {
+                "id": project.id,
+                "title": project.title,
+                "status": project.status or "active",
+                "total_budget": project.total_budget,
+                "start_date": project.start_date,
+                "expected_end_date": project.expected_end_date,
+                "description": project.description,
+                "total_spent": project.total_spent,
+                "remaining_budget": project.remaining_budget,
+                "client_username": client.user.username,
+                "client_phone": client.phone,
+                "client_address": client.address,
+                "client_budget": client.budget,
+                "created_at": project.created_at
+            }
+        except Project.DoesNotExist:
+            project_data = None
+        
+        # Get expenses for this client's project
+        expenses_data = []
+        if project_data:
+            expenses = project.expenses.all()  # Using related_name from Expense model
+            for expense in expenses:
+                expenses_data.append({
+                    "id": expense.id,
+                    "description": expense.description,
+                    "amount": expense.amount,
+                    "date": expense.date,
+                })
+        
+        return Response({
+            'project': project_data,
+            'expenses': expenses_data,
+            'client_info': {
+                'username': client.user.username,
+                'phone': client.phone,
+                'address': client.address,
+                'budget': client.budget,
+                'is_active': client.is_active,
+                'created_at': client.created_at
+            }
         })
