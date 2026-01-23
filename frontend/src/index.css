@@ -424,6 +424,34 @@
     font-family: Poppins, Inter, sans-serif;
   }
 
+  /* Print Styles */
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    
+    #print-content, #print-content * {
+      visibility: visible;
+    }
+    
+    #print-content {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      padding: 20px;
+    }
+    
+    .no-print {
+      display: none !important;
+    }
+    
+    @page {
+      margin: 1cm;
+      size: A4;
+    }
+  }
+
   :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) h1 {
     font-size: var(--text-2xl);
     font-weight: var(--font-weight-medium);
