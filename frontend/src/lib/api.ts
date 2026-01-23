@@ -1,21 +1,24 @@
 import axios from "axios";
 
+const API_BASE_URL = 'http://127.0.0.1:8000/api/';
+
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/', // رابط الباك
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 second timeout
 });
 
 // Function to refresh token
-const refreshToken = async () => {
+const refreshToken = async (): Promise<string> => {
   const refresh = localStorage.getItem('refreshToken');
   if (!refresh) {
     throw new Error('No refresh token available');
   }
   
   try {
-    const response = await axios.post('http://127.0.0.1:8000/api/token/refresh/', {
+    const response = await axios.post(`${API_BASE_URL}token/refresh/`, {
       refresh: refresh
     });
     
@@ -32,10 +35,11 @@ const refreshToken = async () => {
   }
 };
 
+// Request interceptor to add auth token
 api.interceptors.request.use(async (config) => {
   let token = localStorage.getItem('accessToken');
   
-  // If no token, try to refresh
+  // If no token, try to refresh (except for login endpoint)
   if (!token && !config.url?.includes('login/')) {
     try {
       token = await refreshToken();
@@ -46,7 +50,7 @@ api.interceptors.request.use(async (config) => {
   }
   
   if (token && !config.url?.includes('login/')) {
-    config.headers.Authorization = `Bearer ${token}`; // لازم Bearer قبل التوكن
+    config.headers.Authorization = `Bearer ${token}`;
   }
   
   return config;
@@ -80,31 +84,4 @@ api.interceptors.response.use(
 );
 
 export default api;
-
-// // مثال: استدعاء العملاء
-// export const getClients = async () => {
-//   const response = await api.get("clients/");
-//   return response.data;
-// };
-// // مثال: استدعاء المصروفات
-// export const getExpenses = async () => {
-//   const response = await api.get("expense/");
-//   return response.data;
-// };
-
-// // مثال: استدعاء المشاريع
-// export const getProject = async () => {
-//   const response = await api.get("project/");
-//   return response.data;
-// };
-// // مثال: استدعاء التقدم
-// export const getProgress = async () => {
-//   const response = await api.get("progress/");
-//   return response.data;
-// };
-// // مثال: استدعاء الرسائل
-// export const getMessage = async () => {
-//   const response = await api.get("message/");
-//   return response.data;
-// };
 

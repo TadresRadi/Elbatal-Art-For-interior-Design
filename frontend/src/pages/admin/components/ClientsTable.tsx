@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '../../../components/ui/table';
-import { CheckCircle, Edit, MessageSquare, Trash2 } from 'lucide-react';
+import { CheckCircle, Edit, MessageSquare, Trash2, TrendingUp } from 'lucide-react';
 import type { Client, Translate } from '../types';
 
 type ClientsTableProps = {
@@ -20,6 +20,7 @@ type ClientsTableProps = {
   onOpenChat: (client: Client) => void;
   onComplete: (clientId: number) => void;
   onDelete: (clientId: number) => void;
+  onSetProgress: (client: Client) => void;
   completed?: boolean;
   deleted?: boolean;
 };
@@ -33,6 +34,7 @@ export function ClientsTable({
   onOpenChat,
   onComplete,
   onDelete,
+  onSetProgress,
   completed,
   deleted,
 }: ClientsTableProps) {
@@ -97,6 +99,14 @@ export function ClientsTable({
                     title={t('فتح الشات', 'Open Chat')}
                   >
                     <MessageSquare className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onSetProgress(c)}
+                    title={t('تعديل التقدم', 'Set Progress')}
+                  >
+                    <TrendingUp className="h-4 w-4 text-blue-600" />
                   </Button>
                   {!completed && (
                     <Button

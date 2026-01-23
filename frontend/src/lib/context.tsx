@@ -23,6 +23,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.body.className = `${language} ${theme}`;
+    document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.lang = language;
+    
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
     } else {

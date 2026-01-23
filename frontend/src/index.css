@@ -424,6 +424,77 @@
     font-family: Poppins, Inter, sans-serif;
   }
 
+  /* RTL/LTR Layout Utilities */
+  .ar .text-left {
+    text-align: right !important;
+  }
+
+  .ar .text-right {
+    text-align: left !important;
+  }
+
+  .ar .float-left {
+    float: right !important;
+  }
+
+  .ar .float-right {
+    float: left !important;
+  }
+
+  .ar .ml-2 {
+    margin-left: 0 !important;
+    margin-right: 0.5rem !important;
+  }
+
+  .ar .mr-2 {
+    margin-right: 0 !important;
+    margin-left: 0.5rem !important;
+  }
+
+  .ar .ml-3 {
+    margin-left: 0 !important;
+    margin-right: 0.75rem !important;
+  }
+
+  .ar .mr-3 {
+    margin-right: 0 !important;
+    margin-left: 0.75rem !important;
+  }
+
+  .ar .ml-4 {
+    margin-left: 0 !important;
+    margin-right: 1rem !important;
+  }
+
+  .ar .mr-4 {
+    margin-right: 0 !important;
+    margin-left: 1rem !important;
+  }
+
+  .ar .pl-4 {
+    padding-left: 0 !important;
+    padding-right: 1rem !important;
+  }
+
+  .ar .pr-4 {
+    padding-right: 0 !important;
+    padding-left: 1rem !important;
+  }
+
+  /* RTL specific fixes for flexbox */
+  .ar .flex-row-reverse {
+    flex-direction: row-reverse;
+  }
+
+  /* Ensure proper icon rotation for RTL */
+  .ar .rtl\:rotate-180 {
+    transform: rotate(180deg);
+  }
+
+  .en .rtl\:rotate-180 {
+    transform: none;
+  }
+
   /* Print Styles */
   @media print {
     body * {

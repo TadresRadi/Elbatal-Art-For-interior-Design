@@ -27,8 +27,6 @@ export function Footer() {
                   className="w-8 h-8 object-contain block rounded-lg"
                   width={32}
                   height={32}
-                  style={{ display: 'block' }}
-                  
                 />
               </div>
               <h3 className="text-[#D4AF37]">

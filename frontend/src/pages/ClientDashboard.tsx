@@ -20,13 +20,16 @@ import {
   CheckCircle2,
   AlertCircle,
   FileText,
+  Moon,
+  Sun,
+  Globe,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Textarea } from '../components/ui/textarea';
 import api from '../lib/api';
 
 export function ClientDashboard() {
-  const { t, language } = useApp();
+  const { t, language, setLanguage, theme, setTheme } = useApp();
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
   const [projectData, setProjectData] = useState<any>(null);
@@ -35,38 +38,26 @@ export function ClientDashboard() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log('Fetching client dashboard data...');
         const dashboardRes = await api.get('client/dashboard/');
-        console.log('DASHBOARD RESPONSE:', dashboardRes.data);
         
         if (dashboardRes.data.project) {
-          console.log('Project data:', dashboardRes.data.project);
           setProjectData(dashboardRes.data.project);
-        } else {
-          console.log('No project data found');
         }
         
         if (dashboardRes.data.expenses) {
-          console.log('Expenses data:', dashboardRes.data.expenses);
           setExpenses(dashboardRes.data.expenses);
         } else {
-          console.log('No expenses data found');
+          // No expenses data found
         }
 
         // Get client's own messages
         const user = JSON.parse(localStorage.getItem('user') || '{}');
-        console.log('User data from localStorage:', user);
         if (user.client_id) {
-          console.log('Fetching messages for client_id:', user.client_id);
           const messagesRes = await api.get(`messages/?client_id=${user.client_id}`);
-          console.log('Messages response:', messagesRes.data);
           setMessages(messagesRes.data);
-        } else {
-          console.log('No client_id found in user data');
         }
       } catch (error: any) {
         console.error('Error fetching data:', error);
-        console.error('Error response:', error.response);
         if (error.response?.status === 401) {
           alert('Session expired, please login again.');
           window.location.hash = '#home';
@@ -115,30 +106,73 @@ const handleSendMessage = async () => {
 
   return (
     <div className="min-h-screen pt-20 bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-<div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-  <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-2xl md:text-3xl text-[#1A1A1A] dark:text-white">
-          {t('لوحة تحكم العميل', 'Client Dashboard')}
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
-{projectData
-  ? t('مرحباً، {{name}}', `Welcome, ${projectData.client_username || projectData.client_name || projectData.user?.username }`)
-  : t('مرحباً', 'Welcome')}
-        </p>
+      {/* Client Dashboard Header with Navigation */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl md:text-3xl text-[#1A1A1A] dark:text-white">
+                {t('لوحة تحكم العميل', 'Client Dashboard')}
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
+                {projectData
+                  ? language === 'ar' 
+                    ? `مرحباً، ${projectData.client_username || projectData.client_name || projectData.user?.username || ''}`
+                    : `Welcome, ${projectData.client_username || projectData.client_name || projectData.user?.username || ''}`
+                  : t('مرحباً', 'Welcome')}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Navigation Links */}
+              <nav className="hidden md:flex items-center gap-8">
+                <a href="#home" className="text-gray-700 dark:text-gray-300 hover:text-[#D4AF37] transition-colors">
+                  {t('الرئيسية', 'Home')}
+                </a>
+                <a href="#works" className="text-gray-700 dark:text-gray-300 hover:text-[#D4AF37] transition-colors">
+                  {t('أعمالنا', 'Our Works')}
+                </a>
+                <a href="#about" className="text-gray-700 dark:text-gray-300 hover:text-[#D4AF37] transition-colors">
+                  {t('من نحن', 'About Us')}
+                </a>
+                <a href="#services" className="text-gray-700 dark:text-gray-300 hover:text-[#D4AF37] transition-colors">
+                  {t('خدماتنا', 'Services')}
+                </a>
+                <a href="#contact" className="text-gray-700 dark:text-gray-300 hover:text-[#D4AF37] transition-colors">
+                  {t('تواصل معنا', 'Contact Us')}
+                </a>
+              </nav>
+              
+              {/* Language and Theme Toggle - Matching Header Design */}
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                >
+                  {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setLanguage(language === 'ar' ? 'en' : 'ar')}
+                >
+                  <Globe className="h-5 w-5" />
+                  <span className="ml-1 text-xs">{language === 'ar' ? 'EN' : 'AR'}</span>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => (window.location.hash = '#home')}
+                >
+                  <LogOut className="mr-2 h-5 w-5" />
+                  {t('خروج', 'Logout')}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <Button
-        variant="outline"
-        onClick={() => (window.location.hash = '#home')}
-      >
-        <LogOut className="mr-2 h-5 w-5" />
-        {t('خروج', 'Logout')}
-      </Button>
-    </div>
-  </div>
-</div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Project Overview */}
@@ -147,39 +181,38 @@ const handleSendMessage = async () => {
             {projectData ? (
               <div className="flex items-start justify-between mb-6">
                 <div>
-<div className="flex items-center gap-3 mb-2">
-  <Home className="h-6 w-6 text-[#D4AF37]" />
-  <div>
-    <h2 className="text-xl text-[#1A1A1A] dark:text-white">
-      {projectData.title} {/* اسم المشروع */}
-    </h2>
-    {/* هنا حطينا العنوان والهاتف جنب بعض */}
-    <p className="text-sm text-gray-600 dark:text-gray-400">
-      {projectData.client_address} - {t('Phone', 'رقم الهاتف')}: {projectData.client_phone}
-    </p>
-  </div>
-</div>
-<div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
-  <div className="flex items-center gap-2">
-    <Clock className="h-4 w-4" />
-<span>
-  {t('البداية:', 'Start:')} {projectData.start_date || t('غير محدد','Not set')}
-</span>
-  </div>
-  <div className="flex items-center gap-2">
-    <Clock className="h-4 w-4" />
-<span>
-  {t('الانتهاء المتوقع:', 'Expected End:')} {projectData.expected_end_date || t('غير محدد','Not set')}
-</span>
-  </div>
-</div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <Home className="h-6 w-6 text-[#D4AF37]" />
+                    <div>
+                      <h2 className="text-xl text-[#1A1A1A] dark:text-white">
+                        {projectData.title}
+                      </h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {projectData.client_address} - {t('Phone', 'رقم الهاتف')}: {projectData.client_phone}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <span>
+                        {t('البداية:', 'Start:')} {projectData.start_date ? new Date(projectData.start_date).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US') : t('غير محدد', 'Not set')}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <span>
+                        {t('الانتهاء المتوقع:', 'Expected End:')} {projectData.expected_end_date ? new Date(projectData.expected_end_date).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US') : t('غير محدد', 'Not set')}
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <div className="px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm">
-                  {projectData.status}
+                  {projectData.status === 'active' ? t('نشط', 'Active') : projectData.status === 'completed' ? t('مكتمل', 'Completed') : projectData.status}
                 </div>
               </div>
             ) : (
-              <p>Loading project data...</p>
+              <p>{t('جاري تحميل بيانات المشروع...', 'Loading project data...')}</p>
             )}
 
             {projectData && (
@@ -260,25 +293,25 @@ const handleSendMessage = async () => {
             </CardContent>
           </Card>
 
-         {projectData && (
-  <Card className="bg-white dark:bg-gray-800">
-    <CardContent className="p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-            {t('الميزانية', 'Budget')}
-          </p>
-          <h3 className="text-2xl text-[#1A1A1A] dark:text-white">
-            {formatCurrency(parseFloat(projectData.client_budget || '0'))}
-          </h3>
-        </div>
-        <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-          <DollarSign className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-)} 
+          {projectData && (
+            <Card className="bg-white dark:bg-gray-800">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                      {t('الميزانية', 'Budget')}
+                    </p>
+                    <h3 className="text-2xl text-[#1A1A1A] dark:text-white">
+                      {formatCurrency(parseFloat(projectData.client_budget || '0'))}
+                    </h3>
+                  </div>
+                  <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                    <DollarSign className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Expenses Table */}
@@ -296,7 +329,7 @@ const handleSendMessage = async () => {
                       <TableHead>{t('الوصف', 'Description')}</TableHead>
                       <TableHead>{t('المبلغ', 'Amount')}</TableHead>
                       <TableHead>{t('الحالة', 'Status')}</TableHead>
-            <TableHead>{t('فاتورة', 'Bill')}</TableHead>
+                      <TableHead>{t('فاتورة', 'Bill')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -371,14 +404,14 @@ const handleSendMessage = async () => {
                       <p className="text-sm break-words">{msg.content}</p>
                       {msg.file_url && (
                         <div className="mt-2">
-                          {msg.file_url.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                          {msg.file_url.match(new RegExp('\\.(jpg|jpeg|png|gif)$', 'i')) ? (
                             <img
                               src={msg.file_url}
                               alt="Attachment"
                               className="max-w-full h-auto rounded-lg cursor-pointer"
                               onClick={() => window.open(msg.file_url, '_blank')}
                             />
-                          ) : msg.file_url.match(/\.pdf$/i) ? (
+                          ) : msg.file_url.match(new RegExp('\\.pdf$', 'i')) ? (
                             <a
                               href={msg.file_url}
                               target="_blank"

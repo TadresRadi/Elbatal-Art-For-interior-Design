@@ -32,8 +32,6 @@ export function Header() {
                   className="w-8 h-8 object-contain block rounded-lg"
                   width={32}
                   height={32}
-                  style={{ display: 'block' }}
-                  
                 />
               </div>
               <div className={`${language === 'ar' ? 'mr-3' : 'ml-3'}`}>

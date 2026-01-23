@@ -86,15 +86,26 @@ class ClientDashboardView(APIView):
                 "bill_url": bill_url
             })
         
+        # Get the client's project and progress
+        project = getattr(client, 'project', None)
+        project_progress = 0
+        project_status = 'active'
+        
+        if project and hasattr(project, 'progress'):
+            project_progress = project.progress.percentage
+            project_status = project.status
+        
         return Response({
             'project': {
-                'title': f'Project for {client.user.username}',
-                'status': 'active',
+                'title': project.title if project else f'Project for {client.user.username}',
+                'status': project_status,
                 'client_username': client.user.username,
                 'client_phone': client.phone,
                 'client_address': client.address,
                 'client_budget': client.budget,
-                'progress': 0  # Can be calculated based on expenses vs budget
+                'progress': project_progress,
+                'start_date': project.start_date.strftime('%Y-%m-%d') if project and project.start_date else None,
+                'expected_end_date': project.expected_end_date.strftime('%Y-%m-%d') if project and project.expected_end_date else None
             },
             'expenses': expenses_data,
             'client_info': {

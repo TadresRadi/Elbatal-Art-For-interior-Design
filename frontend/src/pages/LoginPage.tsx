@@ -56,21 +56,16 @@ export function LoginPage() {
     } else if (user.role === 'client') {
       window.location.hash = '#client-dashboard';
     } else {
-      alert('Role not recognized');
+      alert(t('Role not recognized', 'لم يتم التعرف على الدور'));
     }
 
   } catch (error: any) {
-    console.error('Login error:', error);
-    console.error('Error response:', error.response);
-    console.error('Error status:', error.response?.status);
-    console.error('Error data:', error.response?.data);
-    
     if (error.response?.status === 401) {
-      alert('Invalid credentials. Please check your username and password.');
+      alert(t('بيانات الاعتماد غير صحيحة. يرجى التحقق من اسم المستخدم وكلمة المرور.', 'Invalid credentials. Please check your username and password.'));
     } else if (error.response?.data?.detail) {
       alert(error.response.data.detail);
     } else {
-      alert('Login failed: ' + (error.message || 'Unknown error'));
+      alert(t('فشل تسجيل الدخول: ', 'Login failed: ') + (error.message || t('خطأ غير معروف', 'Unknown error')));
     }
   } finally {
     setIsLoading(false);
@@ -92,20 +87,20 @@ export function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
 
               <Input
-                placeholder="Username"
+                placeholder={t('اسم المستخدم', 'Username')}
                 value={credentials.username}
                 onChange={(e)=>setCredentials({...credentials,username:e.target.value})}
               />
 
               <Input
                 type="password"
-                placeholder="Password"
+                placeholder={t('كلمة المرور', 'Password')}
                 value={credentials.password}
                 onChange={(e)=>setCredentials({...credentials,password:e.target.value})}
               />
 
               <Button type="submit" disabled={isLoading} className="w-full">
-                {isLoading ? 'Logging in...' : 'Login'}
+                {isLoading ? t('جاري تسجيل الدخول...', 'Logging in...') : t('دخول', 'Login')}
               </Button>
 
             </form>

@@ -40,7 +40,6 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
     setLoading(true);
     try {
       const res = await api.get(`admin/expenses/?client_id=${client.id}`);
-      console.log('Loaded expenses:', res.data);
       setExpenses(res.data);
     } catch (err) {
       console.error('Error loading expenses:', err);
@@ -83,7 +82,6 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
 
   const formatCurrency = (amount: number) => {
     if (typeof amount !== 'number' || isNaN(amount)) {
-      console.log('Invalid amount for formatting:', amount);
       return 'EGP 0.00';
     }
     const formatted = new Intl.NumberFormat('ar-EG', {
@@ -95,11 +93,8 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
 
   const totalAmount = expenses.reduce((sum, expense) => {
     const amount = parseFloat(String(expense.amount)) || 0;
-    console.log('Adding to total:', amount, 'from expense:', expense);
     return sum + amount;
   }, 0);
-  
-  console.log('Final total amount:', totalAmount);
 
   const handlePrint = () => {
     setShowPrintPreview(true);

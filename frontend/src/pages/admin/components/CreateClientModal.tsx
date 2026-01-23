@@ -61,13 +61,13 @@ export function CreateClientModal({
           />
           <Input
             type="date"
-            placeholder="Start Date"
+            placeholder={t('تاريخ البدء', 'Start Date')}
             value={form.start_date}
             onChange={(e) => setForm({ ...form, start_date: e.target.value })}
           />
           <Input
             type="date"
-            placeholder="Expected End Date"
+            placeholder={t('تاريخ الانتهاء المتوقع', 'Expected End Date')}
             value={form.expected_end_date}
             onChange={(e) => setForm({ ...form, expected_end_date: e.target.value })}
           />

@@ -12,10 +12,11 @@ import { ChatModal } from './admin/components/ChatModal';
 import { CreateClientModal } from './admin/components/CreateClientModal';
 import { ExpenseModal } from './admin/components/ExpenseModal';
 import { ClientExpensesModal } from './admin/components/ClientExpensesModal';
+import { ProgressModal } from './admin/components/ProgressModal';
 import type { Client, CreateClientForm } from './admin/types';
 
 export function AdminDashboard() {
-  const { t, language } = useApp();
+  const { t, language, setLanguage, theme, setTheme } = useApp();
   const [tab, setTab] = useState('overview');
 
   const [clients, setClients] = useState<Client[]>([]);
@@ -26,6 +27,7 @@ export function AdminDashboard() {
   const [modalChat, setModalChat] = useState<Client | null>(null);
   const [modalExpense, setModalExpense] = useState<Client | null>(null);
   const [modalClientExpenses, setModalClientExpenses] = useState<Client | null>(null);
+  const [modalProgress, setModalProgress] = useState<Client | null>(null);
 
   const [form, setForm] = useState<CreateClientForm>({
     username: '',
@@ -60,6 +62,21 @@ export function AdminDashboard() {
     setModalChat(client);
   };
 
+  const handleSetProgress = (client: Client) => {
+    setModalProgress(client);
+  };
+
+  const handleUpdateProgress = async (clientId: number, progress: number) => {
+    try {
+      await api.patch(`admin/clients/${clientId}/progress/`, { progress });
+      setClients(clients.map(cl => cl.id === clientId ? { ...cl, progress } : cl));
+      alert(t('تم تحديث التقدم بنجاح', 'Progress updated successfully'));
+    } catch (err) {
+      console.error('Error updating progress:', err);
+      alert(t('فشل تحديث التقدم', 'Failed to update progress'));
+    }
+  };
+
   const handleCompleteClient = async (clientId: number) => {
     try {
       await api.post(`admin/clients/${clientId}/complete/`);
@@ -88,36 +105,23 @@ export function AdminDashboard() {
         formData.append('file', selectedFile);
       }
 
-      console.log('Sending message with data:', {
-        client: modalChat.id,
-        content: message,
-        hasFile: !!selectedFile,
-      });
-
       const response = await api.post('messages/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
-      console.log('Message sent successfully:', response.data);
-
       setMessage('');
       setSelectedFile(null);
 
       try {
         const res = await api.get(`messages/?client_id=${modalChat.id}`);
-        console.log('Messages after refresh:', res.data);
         setModalChat(prev => prev ? { ...prev, messages: res.data } : null);
       } catch (err) {
         console.error('Error refreshing messages:', err);
       }
     } catch (err: any) {
       console.error('Error sending message:', err);
-      console.error('Error response:', err.response);
-      console.error('Error status:', err.response?.status);
-      console.error('Error data:', err.response?.data);
-
       if (err.response?.data) {
         alert('فشل إرسال الرسالة: ' + JSON.stringify(err.response.data));
       } else {
@@ -130,20 +134,15 @@ export function AdminDashboard() {
     if (!modalChat) return;
 
     try {
-      console.log('Creating test message for client:', modalChat.id);
       const response = await api.post('messages/', {
         client: modalChat.id,
         content: `Test message from admin at ${new Date().toLocaleString()}`,
       });
 
-      console.log('Test message created:', response.data);
-
       const res = await api.get(`messages/?client_id=${modalChat.id}`);
-      console.log('Messages after test creation:', res.data);
       setModalChat(prev => prev ? { ...prev, messages: res.data } : null);
     } catch (err: any) {
       console.error('Error creating test message:', err);
-      console.error('Error response:', err.response);
       alert('Failed to create test message');
     }
   };
@@ -165,8 +164,6 @@ export function AdminDashboard() {
           'Content-Type': 'multipart/form-data',
         },
       });
-      console.log('Expense created:', res.data);
-      // Optionally refresh client data or show success message
       alert(t('تم إضافة المصروف بنجاح', 'Expense added successfully'));
     } catch (err: any) {
       console.error('Error creating expense:', err);
@@ -205,32 +202,9 @@ export function AdminDashboard() {
       if (!modalChat) return;
 
       try {
-        console.log('=== CHAT LOADING DEBUG ===');
-        console.log('Loading chat for client:', modalChat.id);
-        console.log('Client object:', modalChat);
-
         const res = await api.get(`messages/?client_id=${modalChat.id}`);
-        console.log('Raw API response:', res);
-        console.log('Response data:', res.data);
-        console.log('Response data type:', typeof res.data);
-        console.log('Is array?', Array.isArray(res.data));
-        console.log('Number of messages:', res.data?.length || 0);
-
-        if (res.data && res.data.length > 0) {
-          console.log('First message:', res.data[0]);
-          console.log('All message IDs:', res.data.map((m: any) => m.id));
-        }
-
-        // Ensure messages is always an array
         const messages = Array.isArray(res.data) ? res.data : [];
-        console.log('Final messages array:', messages);
-
-        setModalChat(prev => {
-          console.log('Previous modalChat:', prev);
-          const updated = prev ? { ...prev, messages: messages } : null;
-          console.log('Updated modalChat:', updated);
-          return updated;
-        });
+        setModalChat(prev => prev ? { ...prev, messages: messages } : null);
 
         // Auto-scroll to bottom after loading
         setTimeout(() => {
@@ -239,12 +213,7 @@ export function AdminDashboard() {
           }
         }, 100);
       } catch (err: any) {
-        console.error('=== CHAT LOAD ERROR ===');
-        console.error('Error:', err);
-        console.error('Error response:', err.response);
-        console.error('Error status:', err.response?.status);
-        console.error('Error data:', err.response?.data);
-
+        console.error('Error loading chat messages:', err);
         // Set empty messages array on error to prevent undefined issues
         setModalChat(prev =>
           prev ? { ...prev, messages: [] } : null
@@ -349,6 +318,10 @@ export function AdminDashboard() {
         t={t}
         onCreateClient={() => setModalCreate(true)}
         onLogout={handleLogout}
+        language={language}
+        setLanguage={setLanguage}
+        theme={theme}
+        setTheme={setTheme}
       />
 
       {/* Tabs */}
@@ -429,6 +402,7 @@ export function AdminDashboard() {
                   onOpenChat={handleOpenChat}
                   onComplete={handleCompleteClient}
                   onDelete={deleteClient}
+                  onSetProgress={handleSetProgress}
                 />
               </CardContent>
             </Card>
@@ -446,6 +420,7 @@ export function AdminDashboard() {
                   onOpenChat={handleOpenChat}
                   onComplete={handleCompleteClient}
                   onDelete={deleteClient}
+                  onSetProgress={handleSetProgress}
                   completed
                 />
               </CardContent>
@@ -483,6 +458,13 @@ export function AdminDashboard() {
           form={form}
           setForm={setForm}
           onCreateClient={createClient}
+          t={t}
+        />
+        <ProgressModal
+          isOpen={!!modalProgress}
+          onClose={() => setModalProgress(null)}
+          client={modalProgress}
+          onUpdateProgress={handleUpdateProgress}
           t={t}
         />
       </div>
