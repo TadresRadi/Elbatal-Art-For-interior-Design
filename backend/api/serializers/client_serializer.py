@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db.models import Sum
 from api.models import Client, ProjectProgress
 from django.contrib.auth.models import User
 
@@ -22,13 +23,10 @@ class ClientSerializer(serializers.ModelSerializer):
         return 0
 
     def get_total(self, obj):
-        if hasattr(obj, 'project'):
-            return float(obj.project.total_budget)
-        return 0
+        return float(obj.expenses.aggregate(total=Sum('amount'))['total'] or 0)
 
     def get_paid(self, obj):
-        # لو عندك مكان لتخزين المدفوعات استخدمه هنا، حاليا بنرجع 0
-        return 0
+        return float(obj.expenses.filter(status='paid').aggregate(total=Sum('amount'))['total'] or 0)
 
     def get_status(self, obj):
         if hasattr(obj, 'project'):

@@ -4,11 +4,14 @@ import api from '../lib/api';
 import { Card, CardContent } from '../components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { Users, Briefcase, DollarSign, TrendingUp } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { AdminHeader } from './admin/components/AdminHeader';
 import { StatCard } from './admin/components/StatCard';
 import { ClientsTable } from './admin/components/ClientsTable';
 import { ChatModal } from './admin/components/ChatModal';
 import { CreateClientModal } from './admin/components/CreateClientModal';
+import { ExpenseModal } from './admin/components/ExpenseModal';
+import { ClientExpensesModal } from './admin/components/ClientExpensesModal';
 import type { Client, CreateClientForm } from './admin/types';
 
 export function AdminDashboard() {
@@ -21,6 +24,8 @@ export function AdminDashboard() {
   const [modalCreate, setModalCreate] = useState(false);
   const [modalEdit, setModalEdit] = useState<Client | null>(null);
   const [modalChat, setModalChat] = useState<Client | null>(null);
+  const [modalExpense, setModalExpense] = useState<Client | null>(null);
+  const [modalClientExpenses, setModalClientExpenses] = useState<Client | null>(null);
 
   const [form, setForm] = useState<CreateClientForm>({
     username: '',
@@ -44,18 +49,11 @@ export function AdminDashboard() {
   const chatRef = useRef<HTMLDivElement>(null);
 
   const handleEditClient = (client: Client) => {
-    setModalEdit(client);
-    setEditForm({
-      name: client.name,
-      username: client.username,
-      password: client.password || '',
-      paid: client.paid.toString(),
-      paidAt: client.paidAt || '',
-      invoice: client.invoice || '',
-      progress: client.progress.toString(),
-      notes: client.notes || '',
-      total: client.total.toString(),
-    });
+    setModalClientExpenses(client);
+  };
+
+  const handleManageExpenses = (client: Client) => {
+    setModalExpense(client);
   };
 
   const handleOpenChat = (client: Client) => {
@@ -147,6 +145,46 @@ export function AdminDashboard() {
       console.error('Error creating test message:', err);
       console.error('Error response:', err.response);
       alert('Failed to create test message');
+    }
+  };
+
+  const createExpense = async (expenseData: any) => {
+    try {
+      const formData = new FormData();
+      formData.append('client_id', expenseData.client_id.toString());
+      formData.append('date', expenseData.date);
+      formData.append('description', expenseData.description);
+      formData.append('amount', expenseData.amount.toString());
+      formData.append('status', expenseData.status);
+      if (expenseData.bill) {
+        formData.append('bill', expenseData.bill);
+      }
+
+      const res = await api.post('expenses/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      console.log('Expense created:', res.data);
+      // Optionally refresh client data or show success message
+      alert(t('تم إضافة المصروف بنجاح', 'Expense added successfully'));
+    } catch (err: any) {
+      console.error('Error creating expense:', err);
+      if (err.response && err.response.data) {
+        alert(t('فشل إضافة المصروف: ', 'Failed to add expense: ') + JSON.stringify(err.response.data));
+      } else {
+        alert(t('فشل إضافة المصروف', 'Failed to add expense'));
+      }
+    }
+  };
+
+  const deleteClient = async (id: number) => {
+    if (!window.confirm(t('هل أنت متأكد من حذف العميل', 'Delete client'))) return;
+    try {
+      await api.delete(`admin/clients/${id}/`);
+      setClients(clients.filter(c => c.id !== id));
+    } catch (err) {
+      console.error('Error deleting client:', err);
     }
   };
 
@@ -304,16 +342,6 @@ export function AdminDashboard() {
     }
   };
 
-  const deleteClient = async (id: number) => {
-    if (!window.confirm(t('هل أنت متأكد من حذف العميل', 'Delete client'))) return;
-    try {
-      await api.delete(`admin/clients/${id}/`);
-      setClients(clients.filter(c => c.id !== id));
-    } catch (err) {
-      console.error('Error deleting client:', err);
-    }
-  };
-
   return (
     <div className="min-h-screen pt-20 bg-gray-50 dark:bg-gray-900">
 
@@ -339,6 +367,54 @@ export function AdminDashboard() {
               <StatCard title={t('مشاريع مكتملة', 'Completed')} value={stats.completed} icon={<TrendingUp className="h-6 w-6 text-purple-600" />} />
               <StatCard title={t('إجمالي الإيرادات', 'Total Revenue')} value={formatCurrency(stats.totalRevenue)} icon={<DollarSign className="h-6 w-6 text-yellow-600" />} />
             </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">{t('حالة العملاء', 'Client Status')}</h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={statusData}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={(entry) => `${entry.name}: ${entry.value}`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        <Cell fill="#10b981" />
+                        <Cell fill="#f59e0b" />
+                        <Cell fill="#6b7280" />
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">{t('إحصائيات سريعة', 'Quick Stats')}</h3>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">{t('نسبة المكتمل', 'Completion Rate')}</span>
+                      <span className="text-2xl font-bold text-green-600">
+                        {stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">{t('متوسط الإيرادات', 'Average Revenue')}</span>
+                      <span className="text-2xl font-bold text-blue-600">
+                        {stats.total > 0 ? formatCurrency(stats.totalRevenue / stats.total) : formatCurrency(0)}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="clients">
@@ -349,6 +425,7 @@ export function AdminDashboard() {
                   t={t}
                   formatCurrency={formatCurrency}
                   onEdit={handleEditClient}
+                  onManageExpenses={handleManageExpenses}
                   onOpenChat={handleOpenChat}
                   onComplete={handleCompleteClient}
                   onDelete={deleteClient}
@@ -365,6 +442,7 @@ export function AdminDashboard() {
                   t={t}
                   formatCurrency={formatCurrency}
                   onEdit={handleEditClient}
+                  onManageExpenses={handleManageExpenses}
                   onOpenChat={handleOpenChat}
                   onComplete={handleCompleteClient}
                   onDelete={deleteClient}
@@ -385,6 +463,19 @@ export function AdminDashboard() {
           setSelectedFile={setSelectedFile}
           onSendMessage={handleSendMessage}
           onTestMessage={handleTestMessage}
+        />
+        <ExpenseModal
+          isOpen={!!modalExpense}
+          onClose={() => setModalExpense(null)}
+          clientId={modalExpense?.id || null}
+          onCreateExpense={createExpense}
+          t={t}
+        />
+        <ClientExpensesModal
+          isOpen={!!modalClientExpenses}
+          onClose={() => setModalClientExpenses(null)}
+          client={modalClientExpenses}
+          t={t}
         />
         <CreateClientModal
           isOpen={modalCreate}

@@ -16,6 +16,7 @@ type ClientsTableProps = {
   t: Translate;
   formatCurrency: (value: number) => string;
   onEdit: (client: Client) => void;
+  onManageExpenses: (client: Client) => void;
   onOpenChat: (client: Client) => void;
   onComplete: (clientId: number) => void;
   onDelete: (clientId: number) => void;
@@ -28,6 +29,7 @@ export function ClientsTable({
   t,
   formatCurrency,
   onEdit,
+  onManageExpenses,
   onOpenChat,
   onComplete,
   onDelete,
@@ -49,7 +51,15 @@ export function ClientsTable({
       <TableBody>
         {list.map((c) => (
           <TableRow key={c.id}>
-            <TableCell>{c.name || c.username}</TableCell>
+            <TableCell>
+              <Button
+                variant="link"
+                className="p-0 h-auto font-normal"
+                onClick={() => onEdit(c)}
+              >
+                {c.name || c.username}
+              </Button>
+            </TableCell>
             <TableCell>{formatCurrency(c.total)}</TableCell>
             <TableCell>{formatCurrency(c.paid)}</TableCell>
             <TableCell>
@@ -75,8 +85,8 @@ export function ClientsTable({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => onEdit(c)}
-                    title={t('تعديل العميل', 'Edit Client')}
+                    onClick={() => onManageExpenses(c)}
+                    title={t('إدارة المصاريف', 'Manage Expenses')}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>

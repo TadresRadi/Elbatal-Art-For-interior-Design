@@ -19,6 +19,7 @@ import {
   Send,
   CheckCircle2,
   AlertCircle,
+  FileText,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Textarea } from '../components/ui/textarea';
@@ -249,7 +250,7 @@ const handleSendMessage = async () => {
                     {t('المتبقي', 'Remaining')}
                   </p>
                   <h3 className="text-2xl text-[#1A1A1A] dark:text-white">
-                    {formatCurrency(totalExpenses - totalPaid)}
+                    {formatCurrency(parseFloat(projectData?.client_budget || '0') - totalExpenses)}
                   </h3>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
@@ -295,6 +296,7 @@ const handleSendMessage = async () => {
                       <TableHead>{t('الوصف', 'Description')}</TableHead>
                       <TableHead>{t('المبلغ', 'Amount')}</TableHead>
                       <TableHead>{t('الحالة', 'Status')}</TableHead>
+            <TableHead>{t('فاتورة', 'Bill')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -305,20 +307,31 @@ const handleSendMessage = async () => {
                         <TableCell>{formatCurrency(expense.amount)}</TableCell>
                         <TableCell>
                           <span
-                            className={`px-2 py-1 rounded-full text-xs ${
+                            className={`px-2 py-1 rounded text-xs font-medium ${
                               expense.status === 'paid'
-                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+                                ? 'bg-green-100 text-green-800'
                                 : expense.status === 'pending'
-                                ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
                             }`}
                           >
-                            {expense.status === 'paid'
-                              ? t('مدفوع', 'Paid')
-                              : expense.status === 'pending'
-                              ? t('معلق', 'Pending')
-                              : t('قادم', 'Upcoming')}
+                            {t(expense.status, expense.status)}
                           </span>
+                        </TableCell>
+                        <TableCell>
+                          {expense.bill_url ? (
+                            <a
+                              href={expense.bill_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-500 hover:text-blue-700 flex items-center gap-1"
+                            >
+                              <FileText className="h-4 w-4" />
+                              {t('عرض', 'View')}
+                            </a>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

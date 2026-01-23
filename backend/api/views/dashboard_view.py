@@ -16,7 +16,8 @@ class AdminDashboardView(APIView):
         # بيانات المشاريع
         projects_data = []
         for project in Project.objects.all():
-            project_total_expenses = Expense.objects.filter(project=project).aggregate(total=Sum('amount'))['total'] or 0
+            project_total_expenses = Expense.objects.filter(client=project.client).aggregate(total=Sum('amount'))['total'] or 0
+
             projects_data.append({
                 "id": project.id,
                 "title": project.title,
@@ -32,7 +33,8 @@ class AdminDashboardView(APIView):
             client_projects = Project.objects.filter(client=client)
             client_projects_data = []
             for project in client_projects:
-                project_expenses = Expense.objects.filter(project=project).aggregate(total=Sum('amount'))['total'] or 0
+                project_expenses = Expense.objects.filter(client=client).aggregate(total=Sum('amount'))['total'] or 0
+
                 client_projects_data.append({
                     "id": project.id,
                     "title": project.title,
@@ -66,43 +68,34 @@ class ClientDashboardView(APIView):
         except Client.DoesNotExist:
             return Response({'error': 'Client not found'}, status=404)
         
-        # Get client's project (OneToOne relationship)
-        project_data = None
-        try:
-            project = client.project  # Using related_name from Project model
-            project_data = {
-                "id": project.id,
-                "title": project.title,
-                "status": project.status or "active",
-                "total_budget": project.total_budget,
-                "start_date": project.start_date,
-                "expected_end_date": project.expected_end_date,
-                "description": project.description,
-                "total_spent": project.total_spent,
-                "remaining_budget": project.remaining_budget,
-                "client_username": client.user.username,
-                "client_phone": client.phone,
-                "client_address": client.address,
-                "client_budget": client.budget,
-                "created_at": project.created_at
-            }
-        except Project.DoesNotExist:
-            project_data = None
+        # Calculate client stats from expenses
+        expenses = Expense.objects.filter(client=client)
+        total_paid = expenses.filter(status='paid').aggregate(total=Sum('amount'))['total'] or 0
+        total_expenses = expenses.aggregate(total=Sum('amount'))['total'] or 0
         
-        # Get expenses for this client's project
+        # Get expenses data
         expenses_data = []
-        if project_data:
-            expenses = project.expenses.all()  # Using related_name from Expense model
-            for expense in expenses:
-                expenses_data.append({
-                    "id": expense.id,
-                    "description": expense.description,
-                    "amount": expense.amount,
-                    "date": expense.date,
-                })
+        for expense in expenses.order_by('-date'):
+            bill_url = request.build_absolute_uri(expense.bill.url) if expense.bill else None
+            expenses_data.append({
+                "id": expense.id,
+                "description": expense.description,
+                "amount": expense.amount,
+                "date": expense.date,
+                "status": expense.status,
+                "bill_url": bill_url
+            })
         
         return Response({
-            'project': project_data,
+            'project': {
+                'title': f'Project for {client.user.username}',
+                'status': 'active',
+                'client_username': client.user.username,
+                'client_phone': client.phone,
+                'client_address': client.address,
+                'client_budget': client.budget,
+                'progress': 0  # Can be calculated based on expenses vs budget
+            },
             'expenses': expenses_data,
             'client_info': {
                 'username': client.user.username,

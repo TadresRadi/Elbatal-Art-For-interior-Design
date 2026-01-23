@@ -8,6 +8,16 @@ export type ChatMessage = {
   file_url?: string;
 };
 
+export type Expense = {
+  id: number;
+  client: number;
+  date: string;
+  description: string;
+  amount: number;
+  status: 'paid' | 'pending' | 'upcoming';
+  bill_url?: string | null;
+};
+
 export type Client = {
   id: number;
   name: string;

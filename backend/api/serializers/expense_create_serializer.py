@@ -1,22 +1,18 @@
 from rest_framework import serializers
-from api.models import Expense, Project
+from api.models import Expense
 
 
 class ExpenseCreateSerializer(serializers.ModelSerializer):
+    bill = serializers.FileField(required=False, allow_null=True)
+
     class Meta:
         model = Expense
-        fields = ['project', 'title', 'amount']
+        fields = ['client', 'date', 'description', 'amount', 'status', 'bill']
 
     def validate(self, data):
-        project = data['project']
         amount = data['amount']
 
         if amount <= 0:
             raise serializers.ValidationError("Amount must be greater than zero.")
-
-        if project.remaining_budget < amount:
-            raise serializers.ValidationError(
-                "Expense exceeds remaining project budget."
-            )
 
         return data
