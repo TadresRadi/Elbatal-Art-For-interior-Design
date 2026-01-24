@@ -37,7 +37,7 @@ export function ExpenseModal({ isOpen, onClose, clientId, onCreateExpense, t }: 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-lg p-6">
+      <div className="bg-white dark:bg-gray-800 w-mid max-w-md rounded-lg p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">{t('إضافة مصروف', 'Add Expense')}</h3>
           <Button size="sm" variant="ghost" onClick={onClose}>

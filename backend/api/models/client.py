@@ -22,7 +22,9 @@ class Client(models.Model):
     budget = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        default=0
+        default=0,
+        blank=True,
+        null=True
     )
 
     is_active = models.BooleanField(default=True)

@@ -9,6 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter,
 } from '../components/ui/table';
 import {
   LogOut,
@@ -34,6 +35,7 @@ export function ClientDashboard() {
   const [messages, setMessages] = useState<any[]>([]);
   const [projectData, setProjectData] = useState<any>(null);
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,6 +44,22 @@ export function ClientDashboard() {
         
         if (dashboardRes.data.project) {
           setProjectData(dashboardRes.data.project);
+        }
+        
+        // Fetch expenses
+        try {
+          const expensesRes = await api.get('expenses/');
+          setExpenses(expensesRes.data);
+        } catch (err) {
+          console.error('Error loading expenses:', err);
+        }
+        
+        // Fetch payments (cash receipts)
+        try {
+          const paymentsRes = await api.get('client/payments/');
+          setPayments(paymentsRes.data);
+        } catch (err: any) {
+          console.error('Error loading payments:', err);
         }
         
         if (dashboardRes.data.expenses) {
@@ -68,11 +86,15 @@ export function ClientDashboard() {
     fetchData();
   }, []);
 
-  const totalPaid = expenses
-    .filter((e) => e.status === 'paid')
-    .reduce((sum, e) => sum + e.amount, 0);
+  const totalPaid = payments.reduce((sum, payment) => {
+    const amount = parseFloat(String(payment.amount)) || 0;
+    return sum + amount;
+  }, 0);
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalExpenses = expenses.reduce((sum, expense) => {
+    const amount = parseFloat(String(expense.amount)) || 0;
+    return sum + amount;
+  }, 0);
 
 const handleSendMessage = async () => {
   if (!message.trim()) return;
@@ -97,11 +119,19 @@ const handleSendMessage = async () => {
   }
 };
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (value: number) => {
     return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
       style: 'currency',
-      currency: 'EGP',
-    }).format(amount);
+      currency: 'EGP'
+    }).format(value);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   return (
@@ -196,13 +226,13 @@ const handleSendMessage = async () => {
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
                       <span>
-                        {t('البداية:', 'Start:')} {projectData.start_date ? new Date(projectData.start_date).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US') : t('غير محدد', 'Not set')}
+                        {t('البداية:', 'Start:')} {projectData.start_date ? formatDate(projectData.start_date) : t('غير محدد', 'Not set')}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4" />
                       <span>
-                        {t('الانتهاء المتوقع:', 'Expected End:')} {projectData.expected_end_date ? new Date(projectData.expected_end_date).toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US') : t('غير محدد', 'Not set')}
+                        {t('الانتهاء المتوقع:', 'Expected End:')} {projectData.expected_end_date ? formatDate(projectData.expected_end_date) : t('غير محدد', 'Not set')}
                       </span>
                     </div>
                   </div>
@@ -238,7 +268,7 @@ const handleSendMessage = async () => {
         </Card>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-3 md:grid-cols-3 gap-3 mb-3">
           <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -283,7 +313,7 @@ const handleSendMessage = async () => {
                     {t('المتبقي', 'Remaining')}
                   </p>
                   <h3 className="text-2xl text-[#1A1A1A] dark:text-white">
-                    {formatCurrency(parseFloat(projectData?.client_budget || '0') - totalExpenses)}
+                    {formatCurrency(totalPaid - totalExpenses)}
                   </h3>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
@@ -292,30 +322,10 @@ const handleSendMessage = async () => {
               </div>
             </CardContent>
           </Card>
-
-          {projectData && (
-            <Card className="bg-white dark:bg-gray-800">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                      {t('الميزانية', 'Budget')}
-                    </p>
-                    <h3 className="text-2xl text-[#1A1A1A] dark:text-white">
-                      {formatCurrency(parseFloat(projectData.client_budget || '0'))}
-                    </h3>
-                  </div>
-                  <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                    <DollarSign className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         {/* Expenses Table */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 mb-8">
           <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-6">
               <h3 className="text-xl mb-4 text-[#1A1A1A] dark:text-white">
@@ -335,17 +345,15 @@ const handleSendMessage = async () => {
                   <TableBody>
                     {expenses.map((expense) => (
                       <TableRow key={expense.id}>
-                        <TableCell>{expense.date}</TableCell>
+                        <TableCell>{formatDate(expense.date)}</TableCell>
                         <TableCell>{expense.description}</TableCell>
                         <TableCell>{formatCurrency(expense.amount)}</TableCell>
                         <TableCell>
                           <span
                             className={`px-2 py-1 rounded text-xs font-medium ${
-                              expense.status === 'paid'
-                                ? 'bg-green-100 text-green-800'
-                                : expense.status === 'pending'
+                              expense.status === 'pending'
                                 ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-gray-100 text-gray-800'
+                                : 'text-white'
                             }`}
                           >
                             {t(expense.status, expense.status)}
@@ -369,6 +377,68 @@ const handleSendMessage = async () => {
                       </TableRow>
                     ))}
                   </TableBody>
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={2} className="font-semibold">
+                        {t('الإجمالي', 'Total')}
+                      </TableCell>
+                      <TableCell className="font-semibold text-lg">
+                        {formatCurrency(totalExpenses)}
+                      </TableCell>
+                      <TableCell colSpan={2}></TableCell>
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Payments Table */}
+        <div className="lg:col-span-2">
+          <Card className="bg-white dark:bg-gray-800">
+            <CardContent className="p-6">
+              <h3 className="text-xl mb-4 text-[#1A1A1A] dark:text-white">
+                {t('جدول المدفوعات', 'Payments Table')}
+              </h3>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('التاريخ', 'Date')}</TableHead>
+                      <TableHead>{t('المبلغ', 'Amount')}</TableHead>
+                      <TableHead>{t('الوصف', 'Description')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {payments.map((payment) => (
+                      <TableRow key={payment.id}>
+                        <TableCell>{formatDate(payment.date)}</TableCell>
+                        <TableCell className="font-semibold text-green-600">
+                          {formatCurrency(payment.amount)}
+                        </TableCell>
+                        <TableCell>{t('إيصال نقدية', 'Cash Receipt')}</TableCell>
+                      </TableRow>
+                    ))}
+                    {payments.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-center text-gray-500 py-8">
+                          {t('لا توجد مدفوعات مسجلة', 'No payments recorded')}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell className="font-semibold">
+                        {t('الإجمالي', 'Total')}
+                      </TableCell>
+                      <TableCell className="font-semibold text-lg text-green-600">
+                        {formatCurrency(totalPaid)}
+                      </TableCell>
+                      <TableCell></TableCell>
+                    </TableRow>
+                  </TableFooter>
                 </Table>
               </div>
             </CardContent>

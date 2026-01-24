@@ -3,8 +3,8 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import api from '../lib/api';
 import { Card, CardContent } from '../components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
-import { Users, Briefcase, DollarSign, TrendingUp } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { Users, Briefcase, DollarSign, TrendingUp, BarChart3 } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { AdminHeader } from './admin/components/AdminHeader';
 import { StatCard } from './admin/components/StatCard';
 import { ClientsTable } from './admin/components/ClientsTable';
@@ -12,6 +12,7 @@ import { ChatModal } from './admin/components/ChatModal';
 import { CreateClientModal } from './admin/components/CreateClientModal';
 import { ExpenseModal } from './admin/components/ExpenseModal';
 import { ClientExpensesModal } from './admin/components/ClientExpensesModal';
+import { ViewExpensesModal } from './admin/components/ViewExpensesModal';
 import { ProgressModal } from './admin/components/ProgressModal';
 import type { Client, CreateClientForm } from './admin/types';
 
@@ -21,6 +22,7 @@ export function AdminDashboard() {
 
   const [clients, setClients] = useState<Client[]>([]);
   const [deleted, setDeleted] = useState<Client[]>([]);
+  const [cashReceipts, setCashReceipts] = useState<any[]>([]);
 
   const [modalCreate, setModalCreate] = useState(false);
   const [modalEdit, setModalEdit] = useState<Client | null>(null);
@@ -33,7 +35,6 @@ export function AdminDashboard() {
     username: '',
     password: '',
     project_title: '',
-    budget: '',
     phone: '',
     address: '',
     start_date: '',
@@ -51,11 +52,11 @@ export function AdminDashboard() {
   const chatRef = useRef<HTMLDivElement>(null);
 
   const handleEditClient = (client: Client) => {
-    setModalClientExpenses(client);
+    setModalExpense(client);
   };
 
   const handleManageExpenses = (client: Client) => {
-    setModalExpense(client);
+    setModalClientExpenses(client);
   };
 
   const handleOpenChat = (client: Client) => {
@@ -198,6 +199,18 @@ export function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    const loadCashReceipts = async () => {
+      try {
+        const res = await api.get('admin/payments/');
+        setCashReceipts(res.data);
+      } catch (err) {
+        console.error('Error loading cash receipts:', err);
+      }
+    };
+    loadCashReceipts();
+  }, []);
+
+  useEffect(() => {
     const loadChat = async () => {
       if (!modalChat) return;
 
@@ -205,33 +218,20 @@ export function AdminDashboard() {
         const res = await api.get(`messages/?client_id=${modalChat.id}`);
         const messages = Array.isArray(res.data) ? res.data : [];
         setModalChat(prev => prev ? { ...prev, messages: messages } : null);
-
-        // Auto-scroll to bottom after loading
-        setTimeout(() => {
-          if (chatRef.current) {
-            chatRef.current.scrollTop = chatRef.current.scrollHeight;
-          }
-        }, 100);
-      } catch (err: any) {
-        console.error('Error loading chat messages:', err);
-        // Set empty messages array on error to prevent undefined issues
-        setModalChat(prev =>
-          prev ? { ...prev, messages: [] } : null
-        );
+      } catch (err) {
+        console.error('Error loading chat:', err);
       }
     };
-
     loadChat();
-  }, [modalChat?.id]);
-
-  useEffect(() => { if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight; }, [modalChat?.messages]);
+  }, [modalChat]);
 
   const stats = useMemo(() => ({
     total: clients.length,
     active: clients.filter(c => c.status === 'active').length,
     completed: clients.filter(c => c.status === 'completed').length,
     totalRevenue: clients.reduce((acc, c) => acc + c.total, 0),
-  }), [clients]);
+    totalReceived: cashReceipts.reduce((acc, receipt) => acc + parseFloat(String(receipt.amount)), 0),
+  }), [clients, cashReceipts]);
 
   const projectsData = useMemo(() => {
     const now = new Date();
@@ -248,8 +248,24 @@ export function AdminDashboard() {
     });
   }, [clients, language]);
 
+  const formatCurrency = (num: number) =>
+    new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(num);
+
+  const financialData = useMemo(() => [
+    {
+      name: language === 'ar' ? 'إجمالي المدفوع' : 'Total Paid',
+      value: stats.totalRevenue,
+      fill: '#f59e0b'
+    },
+    {
+      name: language === 'ar' ? 'إجمالي المستلم' : 'Total Received',
+      value: stats.totalReceived,
+      fill: '#10b981'
+    }
+  ], [stats.totalRevenue, stats.totalReceived, language]);
+
   const statusData = useMemo(() => {
-    const map: any = {};
+    const map: Record<string, number> = {};
     clients.forEach(c => { map[c.status] = (map[c.status] || 0) + 1 });
     return Object.entries(map).map(([key, value]) => {
       const name = key === 'active'
@@ -261,9 +277,6 @@ export function AdminDashboard() {
     });
   }, [clients, language]);
 
-  const formatCurrency = (num: number) =>
-    new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'EGP' }).format(num);
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
@@ -273,7 +286,7 @@ export function AdminDashboard() {
   };
 
   const createClient = async () => {
-    if (!form.username.trim() || !form.password.trim() || !form.project_title.trim() || !form.budget) {
+    if (!form.username.trim() || !form.password.trim() || !form.project_title.trim()) {
       return alert(t('يرجى ملء جميع الحقول المطلوبة', 'Please fill all required fields'));
     }
     try {
@@ -281,14 +294,13 @@ export function AdminDashboard() {
         username: form.username,
         password: form.password,
         project_title: form.project_title,
-        budget: Number(form.budget),
         phone: form.phone || '',
         address: form.address || '',
         start_date: form.start_date,
         expected_end_date: form.expected_end_date
       });
       setClients([res.data, ...clients]);
-      setForm({ username: '', password: '', project_title: '', budget: '', phone: '', address: '', start_date: '', expected_end_date: '' });
+      setForm({ username: '', password: '', project_title: '', phone: '', address: '', start_date: '', expected_end_date: '' });
       setModalCreate(false);
       setTab('clients');
       alert(t('تم إنشاء العميل بنجاح', 'Client created successfully'));
@@ -313,7 +325,6 @@ export function AdminDashboard() {
 
   return (
     <div className="min-h-screen pt-20 bg-gray-50 dark:bg-gray-900">
-
       <AdminHeader
         t={t}
         onCreateClient={() => setModalCreate(true)}
@@ -338,7 +349,11 @@ export function AdminDashboard() {
               <StatCard title={t('إجمالي العملاء', 'Total Clients')} value={stats.total} icon={<Users className="h-6 w-6 text-blue-600" />} />
               <StatCard title={t('مشاريع نشطة', 'Active Projects')} value={stats.active} icon={<Briefcase className="h-6 w-6 text-green-600" />} />
               <StatCard title={t('مشاريع مكتملة', 'Completed')} value={stats.completed} icon={<TrendingUp className="h-6 w-6 text-purple-600" />} />
-              <StatCard title={t('إجمالي الإيرادات', 'Total Revenue')} value={formatCurrency(stats.totalRevenue)} icon={<DollarSign className="h-6 w-6 text-yellow-600" />} />
+              <StatCard title={t('إجمالي المدفوع', 'Total Paid')} value={formatCurrency(stats.totalRevenue)} icon={<DollarSign className="h-6 w-6 text-yellow-600" />} />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+              <StatCard title={t('إجمالي المستلم', 'Total Received')} value={formatCurrency(stats.totalReceived)} icon={<DollarSign className="h-6 w-6 text-green-600" />} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -370,21 +385,23 @@ export function AdminDashboard() {
 
               <Card>
                 <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-4">{t('إحصائيات سريعة', 'Quick Stats')}</h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">{t('نسبة المكتمل', 'Completion Rate')}</span>
-                      <span className="text-2xl font-bold text-green-600">
-                        {stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0}%
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">{t('متوسط الإيرادات', 'Average Revenue')}</span>
-                      <span className="text-2xl font-bold text-blue-600">
-                        {stats.total > 0 ? formatCurrency(stats.totalRevenue / stats.total) : formatCurrency(0)}
-                      </span>
-                    </div>
-                  </div>
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    {t('مقارنة مالية', 'Financial Comparison')}
+                  </h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={financialData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" />
+                      <YAxis />
+                      <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                      <Bar dataKey="value" fill="#8884d8">
+                        {financialData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
             </div>
@@ -439,11 +456,10 @@ export function AdminDashboard() {
           onSendMessage={handleSendMessage}
           onTestMessage={handleTestMessage}
         />
-        <ExpenseModal
+        <ViewExpensesModal
           isOpen={!!modalExpense}
           onClose={() => setModalExpense(null)}
-          clientId={modalExpense?.id || null}
-          onCreateExpense={createExpense}
+          client={modalExpense}
           t={t}
         />
         <ClientExpensesModal

@@ -46,7 +46,6 @@ export type CreateClientForm = {
   username: string;
   password: string;
   project_title: string;
-  budget: string;
   phone: string;
   address: string;
   start_date: string;

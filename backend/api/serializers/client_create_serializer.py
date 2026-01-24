@@ -15,7 +15,7 @@ class ClientCreateSerializer(serializers.Serializer):
     phone = serializers.CharField(max_length=20, required=False, allow_blank=True)
     address = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
-    budget = serializers.DecimalField(max_digits=12, decimal_places=2)
+    budget = serializers.DecimalField(max_digits=12, decimal_places=2, required=False, allow_null=True)
     project_title = serializers.CharField(max_length=150)
 
     # ✅ إضافة الحقول الجديدة
@@ -34,7 +34,7 @@ class ClientCreateSerializer(serializers.Serializer):
 
         phone = validated_data.get('phone', '')
         address = validated_data.get('address', '')
-        budget = validated_data['budget']
+        budget = validated_data.get('budget', 0)
         project_title = validated_data['project_title']
 
         start_date = validated_data.get('start_date', None)

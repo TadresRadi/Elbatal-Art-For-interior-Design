@@ -44,12 +44,6 @@ export function CreateClientModal({
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
           <Input
-            type="number"
-            placeholder={t('الميزانية', 'Budget')}
-            value={form.budget}
-            onChange={(e) => setForm({ ...form, budget: e.target.value })}
-          />
-          <Input
             placeholder={t('الهاتف (اختياري)', 'Phone (Optional)')}
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}

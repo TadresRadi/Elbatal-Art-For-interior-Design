@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -12,7 +14,8 @@ import {
   TableFooter,
 } from '../../../components/ui/table';
 import { Card, CardContent } from '../../../components/ui/card';
-import { FileText, Save, X, Edit, Trash2, Printer, Eye } from 'lucide-react';
+import { FileText, Save, X, Edit, Trash2, Printer, Eye, Plus, DollarSign } from 'lucide-react';
+import { CashReceiptModal } from './CashReceiptModal';
 import type { Translate, Expense } from '../types';
 import api from '../../../lib/api';
 
@@ -28,6 +31,7 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
+  const cashReceiptFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (isOpen && client) {
@@ -45,6 +49,42 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
       console.error('Error loading expenses:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateExpense = async (expenseData: any) => {
+    try {
+      const formData = new FormData();
+      formData.append('client_id', expenseData.client_id.toString());
+      formData.append('date', expenseData.date);
+      formData.append('description', expenseData.description);
+      formData.append('amount', expenseData.amount.toString());
+      formData.append('status', expenseData.status);
+      if (expenseData.bill) {
+        formData.append('bill', expenseData.bill);
+      }
+
+      await api.post('expenses/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      loadExpenses(); // Reload expenses
+    } catch (err) {
+      console.error('Error creating expense:', err);
+    }
+  };
+
+  const handleCreateCashReceipt = async (cashReceiptData: any) => {
+    try {
+      console.log('Creating cash receipt with data:', cashReceiptData);
+      const response = await api.post('admin/cash-receipts/', cashReceiptData);
+      console.log('Cash receipt created successfully:', response.data);
+      return response.data;
+    } catch (err) {
+      console.error('Error creating cash receipt:', err);
+      throw err;
     }
   };
 
@@ -112,7 +152,7 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
       <div className="bg-white dark:bg-gray-800 w-full max-w-6xl max-h-[90vh] rounded-lg p-6 overflow-auto">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl text-[#1A1A1A] dark:text-white">
-            {t('جدول المصروفات', 'Expenses Table')} - {client.name || client.username}
+            {t('إدارة المصروفات', 'Manage Expenses')} - {client.name || client.username}
           </h3>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handlePrint}>
@@ -125,177 +165,223 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
           </div>
         </div>
 
-        <Card className="bg-white dark:bg-gray-800">
-          <CardContent className="p-6">
-            {loading ? (
-              <div className="text-center py-8">{t('جاري التحميل...', 'Loading...')}</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('التاريخ', 'Date')}</TableHead>
-                      <TableHead>{t('الوصف', 'Description')}</TableHead>
-                      <TableHead>{t('المبلغ', 'Amount')}</TableHead>
-                      <TableHead>{t('الحالة', 'Status')}</TableHead>
-                      <TableHead>{t('فاتورة', 'Bill')}</TableHead>
-                      <TableHead>{t('إجراءات', 'Actions')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {expenses.map((expense) => (
-                      <TableRow key={expense.id}>
-                        {editingId === expense.id ? (
-                          <>
-                            <TableCell>
-                              <Input
-                                type="date"
-                                value={expense.date}
-                                onChange={(e) => handleUpdateExpense(expense.id, 'date', e.target.value)}
-                                className="w-full"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={expense.description}
-                                onChange={(e) => handleUpdateExpense(expense.id, 'description', e.target.value)}
-                                className="w-full"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="number"
-                                value={expense.amount}
-                                onChange={(e) => handleUpdateExpense(expense.id, 'amount', parseFloat(e.target.value) || 0)}
-                                className="w-full"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Select
-                                value={expense.status}
-                                onValueChange={(value: string) => handleUpdateExpense(expense.id, 'status', value)}
-                              >
-                                <SelectTrigger className="w-full">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="paid">{t('مدفوع', 'Paid')}</SelectItem>
-                                  <SelectItem value="pending">{t('معلق', 'Pending')}</SelectItem>
-                                  <SelectItem value="upcoming">{t('قادم', 'Upcoming')}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                type="file"
-                                accept="image/*,.pdf"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleUpdateExpense(expense.id, 'bill', file);
-                                }}
-                                className="w-full"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => setEditingId(null)}
-                                  className="bg-green-600 hover:bg-green-700"
-                                >
-                                  <Save className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setEditingId(null)}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </>
-                        ) : (
-                          <>
-                            <TableCell>{expense.date}</TableCell>
-                            <TableCell>{expense.description}</TableCell>
-                            <TableCell>{formatCurrency(parseFloat(String(expense.amount)) || 0)}</TableCell>
-                            <TableCell>
-                              <span
-                                className={`px-2 py-1 rounded text-xs font-medium ${
-                                  expense.status === 'paid'
-                                    ? 'bg-green-100 text-green-800'
-                                    : expense.status === 'pending'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-gray-100 text-gray-800'
-                                }`}
-                              >
-                                {t(expense.status, expense.status)}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              {expense.bill_url ? (
-                                <a
-                                  href={expense.bill_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-500 hover:text-blue-700 flex items-center gap-1"
-                                >
-                                  <FileText className="h-4 w-4" />
-                                  {t('عرض', 'View')}
-                                </a>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setEditingId(expense.id)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleDeleteExpense(expense.id)}
-                                  className="text-red-600 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                  <TableFooter>
-                    <TableRow>
-                      <TableCell colSpan={2} className="font-semibold">
-                        {t('الإجمالي', 'Total')}
-                      </TableCell>
-                      <TableCell className="font-semibold text-lg">
-                        {formatCurrency(totalAmount)}
-                      </TableCell>
-                      <TableCell colSpan={3}></TableCell>
-                    </TableRow>
-                  </TableFooter>
-                </Table>
-                {expenses.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    {t('لا توجد مصاريف', 'No expenses found')}
-                  </div>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+        <Tabs defaultValue="expenses" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="expenses" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              {t('إضافة مصروف', 'Add Expenses')}
+            </TabsTrigger>
+            <TabsTrigger value="cash-receipt" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              {t('إيصال نقدية', 'Cash Receipt')}
+            </TabsTrigger>
+          </TabsList>
 
-      {/* Print Preview Modal */}
+          <TabsContent value="expenses" className="mt-4">
+            <div className="max-w-md mx-auto">
+              <h4 className="text-lg font-semibold mb-4 text-center">
+                {t('إضافة مصروف جديد', 'Add New Expense')}
+              </h4>
+              
+              <Card className="bg-white dark:bg-gray-800">
+                <CardContent className="p-6">
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget as HTMLFormElement);
+                    
+                    const expenseData: any = {
+                      client_id: client?.id,
+                      date: formData.get('date') as string,
+                      description: formData.get('description') as string,
+                      amount: parseFloat(formData.get('amount') as string),
+                      status: formData.get('status') as string,
+                    };
+                    
+                    // Handle file upload
+                    const billFile = (formData.get('bill') as File) || null;
+                    if (billFile) {
+                      expenseData.bill = billFile;
+                    }
+                    
+                    handleCreateExpense(expenseData);
+                    (e.currentTarget as HTMLFormElement).reset();
+                  }} className="space-y-4">
+                    <div>
+                      <Label htmlFor="expense-date">{t('التاريخ', 'Date')}</Label>
+                      <Input
+                        id="expense-date"
+                        name="date"
+                        type="date"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="expense-description">{t('الوصف', 'Description')}</Label>
+                      <Input
+                        id="expense-description"
+                        name="description"
+                        placeholder={t('أدخل وصف المصروف', 'Enter expense description')}
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="expense-amount">{t('المبلغ', 'Amount')}</Label>
+                      <Input
+                        id="expense-amount"
+                        name="amount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="expense-status">{t('الحالة', 'Status')}</Label>
+                      <Select name="status" defaultValue="pending">
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder={t('اختر الحالة', 'Select status')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="paid">{t('مدفوع', 'Paid')}</SelectItem>
+                          <SelectItem value="pending">{t('معلق', 'Pending')}</SelectItem>
+                          <SelectItem value="upcoming">{t('قادم', 'Upcoming')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="expense-bill">{t('فاتورة/إيصال', 'Bill/Receipt')}</Label>
+                      <div className="mt-1">
+                        <input
+                          type="file"
+                          id="expense-bill"
+                          name="bill"
+                          accept="image/*,.pdf"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const label = e.currentTarget.nextElementSibling as HTMLElement;
+                              label.textContent = file.name;
+                            }
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => document.getElementById('expense-bill')?.click()}
+                          className="w-full"
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          {t('اختر ملف', 'Choose File')}
+                        </Button>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {t('PNG, JPG, PDF (حتى 10 ميجابايت)', 'PNG, JPG, PDF (up to 10MB)')}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-4">
+                      <Button type="submit" className="flex-1 bg-[#D4AF37] hover:bg-[#B8941F]">
+                        {t('إضافة', 'Add')}
+                      </Button>
+                      <Button type="button" variant="outline" className="flex-1">
+                        {t('إلغاء', 'Cancel')}
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="cash-receipt" className="mt-4">
+            <div className="max-w-md mx-auto">
+              <h4 className="text-lg font-semibold mb-4 text-center">
+                {t('إضافة إيصال نقدية', 'Add Cash Receipt')}
+              </h4>
+              
+              <Card className="bg-white dark:bg-gray-800">
+                <CardContent className="p-6">
+                  <form ref={cashReceiptFormRef} onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget as HTMLFormElement);
+                    const cashReceiptData = {
+                      client_id: client?.id,
+                      date: formData.get('date') as string,
+                      amount: parseFloat(formData.get('amount') as string),
+                    };
+                    
+                    console.log('Form data:', Object.fromEntries(formData.entries()));
+                    console.log('Cash receipt data to send:', cashReceiptData);
+                    
+                    handleCreateCashReceipt(cashReceiptData);
+                    (e.currentTarget as HTMLFormElement).reset();
+                    
+                    // Show success message
+                    alert(t('تم إضافة الإيصال النقدي بنجاح', 'Cash receipt added successfully'));
+                  }} className="space-y-4">
+                    <div>
+                      <Label htmlFor="cash-date">{t('التاريخ', 'Date')}</Label>
+                      <Input
+                        id="cash-date"
+                        name="date"
+                        type="date"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="cash-amount">{t('المبلغ', 'Amount')}</Label>
+                      <div className="relative mt-1">
+                        <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Input
+                          id="cash-amount"
+                          name="amount"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          required
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-4">
+                      <Button type="submit" className="flex-1 bg-[#D4AF37] hover:bg-[#B8941F] text-white">
+                        <Plus className="mr-2 h-4 w-4" />
+                        {t('إضافة', 'Add')}
+                      </Button>
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => {
+                          if (cashReceiptFormRef.current) {
+                            cashReceiptFormRef.current.reset();
+                          }
+                        }}
+                      >
+                        {t('إلغاء', 'Cancel')}
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Print Preview Modal */}
       {showPrintPreview && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-lg p-6 overflow-auto">
@@ -341,11 +427,9 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
                         <TableCell>
                           <span
                             className={`px-2 py-1 rounded text-xs font-medium ${
-                              expense.status === 'paid'
-                                ? 'bg-green-100 text-green-800'
-                                : expense.status === 'pending'
+                              expense.status === 'pending'
                                 ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-gray-100 text-gray-800'
+                                : 'text-white'
                             }`}
                           >
                             {t(expense.status, expense.status)}
@@ -394,6 +478,7 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
