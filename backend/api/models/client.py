@@ -43,6 +43,16 @@ class Client(models.Model):
     discussion_completed = models.BooleanField(default=False)
     discussion_completed_at = models.DateTimeField(null=True, blank=True)
 
+    # Separate discussion completion fields for expenses and payments
+    expenses_discussion_completed = models.BooleanField(default=False)
+    expenses_discussion_completed_at = models.DateTimeField(null=True, blank=True)
+    payments_discussion_completed = models.BooleanField(default=False)
+    payments_discussion_completed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Version tracking for expenses and payments discussions
+    expenses_version_count = models.IntegerField(default=0)
+    payments_version_count = models.IntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -105,7 +105,11 @@ class ClientDashboardView(APIView):
                 'client_budget': client.budget,
                 'progress': project_progress,
                 'start_date': project.start_date.strftime('%Y-%m-%d') if project and project.start_date else None,
-                'expected_end_date': project.expected_end_date.strftime('%Y-%m-%d') if project and project.expected_end_date else None
+                'expected_end_date': project.expected_end_date.strftime('%Y-%m-%d') if project and project.expected_end_date else None,
+                'expenses_discussion_completed': client.expenses_discussion_completed,
+                'payments_discussion_completed': client.payments_discussion_completed,
+                'expenses_discussion_completed_at': client.expenses_discussion_completed_at,
+                'payments_discussion_completed_at': client.payments_discussion_completed_at
             },
             'expenses': expenses_data,
             'client_info': {

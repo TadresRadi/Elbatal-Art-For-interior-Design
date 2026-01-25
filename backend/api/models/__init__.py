@@ -5,3 +5,4 @@ from .progress import ProjectProgress
 from .message import Message
 from .cash_receipt import CashReceipt
 from .work_item import WorkItem
+from .version_models import ExpenseVersion, PaymentVersion

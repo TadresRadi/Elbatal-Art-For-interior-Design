@@ -24,6 +24,7 @@ import {
   Moon,
   Sun,
   Globe,
+  X,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Textarea } from '../components/ui/textarea';
@@ -39,6 +40,15 @@ export function ClientDashboard() {
   const [postDiscussionExpenses, setPostDiscussionExpenses] = useState<any[]>([]);
   const [postDiscussionPayments, setPostDiscussionPayments] = useState<any[]>([]);
   const [discussionCompleted, setDiscussionCompleted] = useState(false);
+  
+  // Version state variables
+  const [expenseVersions, setExpenseVersions] = useState<any[]>([]);
+  const [paymentVersions, setPaymentVersions] = useState<any[]>([]);
+  const [expensesDiscussionCompleted, setExpensesDiscussionCompleted] = useState(false);
+  const [paymentsDiscussionCompleted, setPaymentsDiscussionCompleted] = useState(false);
+  const [expensesDiscussionCompletedAt, setExpensesDiscussionCompletedAt] = useState<string | null>(null);
+  const [paymentsDiscussionCompletedAt, setPaymentsDiscussionCompletedAt] = useState<string | null>(null);
+  const [collapsedVersions, setCollapsedVersions] = useState<{[key: string]: boolean}>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -47,36 +57,112 @@ export function ClientDashboard() {
         
         if (dashboardRes.data.project) {
           setProjectData(dashboardRes.data.project);
-          // Set discussion completed status from project data
-          if (dashboardRes.data.project.discussion_completed) {
-            setDiscussionCompleted(true);
+          // Set separate discussion completed states
+          setExpensesDiscussionCompleted(dashboardRes.data.project.expenses_discussion_completed || false);
+          setPaymentsDiscussionCompleted(dashboardRes.data.project.payments_discussion_completed || false);
+          setExpensesDiscussionCompletedAt(dashboardRes.data.project.expenses_discussion_completed_at || null);
+          setPaymentsDiscussionCompletedAt(dashboardRes.data.project.payments_discussion_completed_at || null);
+          
+          console.log('Project data:', dashboardRes.data.project);
+          console.log('Expenses discussion completed:', dashboardRes.data.project.expenses_discussion_completed);
+          console.log('Payments discussion completed:', dashboardRes.data.project.payments_discussion_completed);
+        }
+        
+        // Get user info for client_id
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const clientId = user.client_id;
+        
+        if (clientId) {
+          // Load expense versions using client endpoints
+          try {
+            const expenseVersionsRes = await api.get(`client/expense-versions/`);
+            const expenseVersionsData = expenseVersionsRes.data;
+            setExpenseVersions(expenseVersionsData);
+            console.log('Expense versions:', expenseVersionsData);
+            
+            // Load payment versions using client endpoints
+            const paymentVersionsRes = await api.get(`client/payment-versions/`);
+            const paymentVersionsData = paymentVersionsRes.data;
+            setPaymentVersions(paymentVersionsData);
+            console.log('Payment versions:', paymentVersionsData);
+            
+            // Fetch current expenses (all expenses for the current/new table)
+            const expensesRes = await api.get('expenses/');
+            const allExpenses = expensesRes.data;
+            console.log('All expenses from API:', allExpenses);
+            
+            // Fetch current payments (cash receipts)
+            const paymentsRes = await api.get('client/payments/');
+            const allPayments = paymentsRes.data;
+            console.log('All payments from API:', allPayments);
+            
+            // For client side: 
+            // - If discussion completed, show versioned tables (old data) + current table (new data ONLY)
+            // - If not completed, show current table (all data)
+            
+            if (dashboardRes.data.project?.expenses_discussion_completed) {
+              // Get the latest expense version to determine what's "old"
+              const latestExpenseVersion = expenseVersionsData[expenseVersionsData.length - 1];
+              if (latestExpenseVersion) {
+                // The versioned data is already stored in the version, so current table should only show new items
+                // Filter expenses created AFTER the latest discussion completion
+                const discussionDate = new Date(latestExpenseVersion.discussion_completed_at);
+                const newExpenses = allExpenses.filter((exp: any) => {
+                  const expDate = new Date(exp.created_at);
+                  return expDate > discussionDate; // Use > instead of >= to be more precise
+                });
+                
+                console.log('Discussion date:', discussionDate);
+                console.log('All expenses:', allExpenses);
+                console.log('New expenses after discussion:', newExpenses);
+                
+                setPostDiscussionExpenses(newExpenses);
+                setExpenses([]); // Clear old expenses since they're in versions
+              } else {
+                console.log('No expense version found, using all expenses');
+                setExpenses(allExpenses);
+                setPostDiscussionExpenses([]);
+              }
+            } else {
+              console.log('Expenses discussion not completed, using all expenses');
+              setExpenses(allExpenses);
+              setPostDiscussionExpenses([]);
+            }
+            
+            if (dashboardRes.data.project?.payments_discussion_completed) {
+              // Get the latest payment version to determine what's "old"
+              const latestPaymentVersion = paymentVersionsData[paymentVersionsData.length - 1];
+              if (latestPaymentVersion) {
+                // The versioned data is already stored in the version, so current table should only show new items
+                // Filter payments created AFTER the latest discussion completion
+                const discussionDate = new Date(latestPaymentVersion.discussion_completed_at);
+                const newPayments = allPayments.filter((pay: any) => {
+                  const payDate = new Date(pay.created_at);
+                  return payDate > discussionDate; // Use > instead of >= to be more precise
+                });
+                
+                console.log('Payment discussion date:', discussionDate);
+                console.log('All payments:', allPayments);
+                console.log('New payments after discussion:', newPayments);
+                
+                setPostDiscussionPayments(newPayments);
+                setPayments([]); // Clear old payments since they're in versions
+              } else {
+                console.log('No payment version found, using all payments');
+                setPayments(allPayments);
+                setPostDiscussionPayments([]);
+              }
+            } else {
+              console.log('Payments discussion not completed, using all payments');
+              setPayments(allPayments);
+              setPostDiscussionPayments([]);
+            }
+          } catch (err) {
+            console.error('Error loading data:', err);
           }
-        }
-        
-        // Fetch expenses
-        try {
-          const expensesRes = await api.get('expenses/');
-          setExpenses(expensesRes.data);
-        } catch (err) {
-          console.error('Error loading expenses:', err);
-        }
-        
-        // Fetch payments (cash receipts)
-        try {
-          const paymentsRes = await api.get('client/payments/');
-          setPayments(paymentsRes.data);
-        } catch (err: any) {
-          console.error('Error loading payments:', err);
-        }
-        
-        if (dashboardRes.data.expenses) {
-          setExpenses(dashboardRes.data.expenses);
-        } else {
-          // No expenses data found
         }
 
         // Get client's own messages
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
         if (user.client_id) {
           const messagesRes = await api.get(`messages/?client_id=${user.client_id}`);
           setMessages(messagesRes.data);
@@ -91,6 +177,11 @@ export function ClientDashboard() {
     };
 
     fetchData();
+    
+    // Set up polling to check for new versions every 10 seconds
+    const interval = setInterval(fetchData, 10000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const totalPaid = payments.reduce((sum, payment) => {
@@ -139,6 +230,13 @@ const handleSendMessage = async () => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
+  };
+
+  const handleToggleVersion = (versionKey: string) => {
+    setCollapsedVersions(prev => ({
+      ...prev,
+      [versionKey]: !prev[versionKey]
+    }));
   };
 
   return (
@@ -331,15 +429,124 @@ const handleSendMessage = async () => {
           </Card>
         </div>
 
-        {/* Expenses Table */}
+        {/* Expenses Section */}
         <div className="lg:col-span-2 mb-8">
+          {/* Expense Versions - Individual Tables */}
+          {expensesDiscussionCompleted && expenseVersions.length > 0 && (
+            <div className="space-y-4 mb-6">
+              {expenseVersions.map((version, index) => {
+                const versionKey = `expenses_${version.id}`;
+                const isVersionCollapsed = collapsedVersions[versionKey] !== false; // Default to collapsed
+                return (
+                  <Card key={version.id} className="bg-white dark:bg-gray-800">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <h5 
+                          className="text-md font-medium text-gray-700 dark:text-gray-300 cursor-pointer hover:text-gray-600"
+                          onClick={() => handleToggleVersion(versionKey)}
+                        >
+                          {t('المصروفات', 'Expenses')} {version.version_number}
+                          {isVersionCollapsed && (
+                            <span className="text-sm text-gray-500 ml-2">
+                              ({t('مطوي', 'Collapsed')})
+                            </span>
+                          )}
+                        </h5>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            {new Date(version.discussion_completed_at).toLocaleDateString()}
+                          </span>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleVersion(versionKey)}
+                              className="text-gray-600 border-gray-600"
+                            >
+                              {isVersionCollapsed ? t('توسيع', 'Expand') : t('طي', 'Collapse')}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      {!isVersionCollapsed && (
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>{t('التاريخ', 'Date')}</TableHead>
+                                <TableHead>{t('الوصف', 'Description')}</TableHead>
+                                <TableHead>{t('المبلغ', 'Amount')}</TableHead>
+                                <TableHead>{t('الحالة', 'Status')}</TableHead>
+                                <TableHead>{t('فاتورة', 'Bill')}</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {version.expenses_data.map((expense: any) => (
+                                <TableRow key={expense.id}>
+                                  <TableCell>{formatDate(expense.date)}</TableCell>
+                                  <TableCell>{expense.description}</TableCell>
+                                  <TableCell>{formatCurrency(expense.amount)}</TableCell>
+                                  <TableCell>
+                                    <span
+                                      className={`px-2 py-1 rounded text-xs font-medium ${
+                                        expense.status === 'pending'
+                                          ? 'bg-yellow-100 text-yellow-800'
+                                          : 'text-white'
+                                      }`}
+                                    >
+                                      {t(expense.status, expense.status)}
+                                    </span>
+                                  </TableCell>
+                                  <TableCell>
+                                    {expense.bill_url ? (
+                                      <a
+                                        href={expense.bill_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-500 hover:text-blue-700 flex items-center gap-1"
+                                      >
+                                        <FileText className="h-4 w-4" />
+                                        {t('عرض', 'View')}
+                                      </a>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                            <TableFooter>
+                              <TableRow>
+                                <TableCell colSpan={2} className="font-semibold">
+                                  {t('إجمالي المصروفات', 'Expenses Total')} {version.version_number}
+                                </TableCell>
+                                <TableCell className="font-semibold text-lg text-gray-600">
+                                  {formatCurrency(version.expenses_data.reduce((sum: number, exp: any) => sum + (parseFloat(String(exp.amount)) || 0), 0))}
+                                </TableCell>
+                                <TableCell colSpan={2}></TableCell>
+                              </TableRow>
+                            </TableFooter>
+                          </Table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Current/New Expenses Table */}
           <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h3 className={`text-xl ${discussionCompleted ? 'text-green-600' : 'text-[#1A1A1A]'} dark:text-white`}>
-                    {t('جدول المصروفات', 'Expenses Table')}
-                    {discussionCompleted && (
+                  <h3 className={`text-xl ${expensesDiscussionCompleted ? 'text-green-600' : 'text-[#1A1A1A]'} dark:text-white`}>
+                    {expensesDiscussionCompleted 
+                      ? t('مصروفات جديدة بعد النقاش', 'New Expenses After Discussion')
+                      : t('جدول المصروفات', 'Expenses Table')
+                    }
+                    {expensesDiscussionCompleted && (
                       <span className="text-sm text-green-600 ml-2">
                         ({t('تم النقاش', 'Discussion Completed')})
                       </span>
@@ -359,7 +566,7 @@ const handleSendMessage = async () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {expenses.map((expense) => (
+                    {(expensesDiscussionCompleted ? postDiscussionExpenses : expenses).map((expense) => (
                       <TableRow key={expense.id}>
                         <TableCell>{formatDate(expense.date)}</TableCell>
                         <TableCell>{expense.description}</TableCell>
@@ -392,10 +599,13 @@ const handleSendMessage = async () => {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {expenses.length === 0 && (
+                    {(expensesDiscussionCompleted ? postDiscussionExpenses : expenses).length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-gray-500 py-8">
-                          {t('لا توجد مصروفات مسجلة', 'No expenses recorded')}
+                          {expensesDiscussionCompleted 
+                            ? t('لا توجد مصروفات جديدة بعد النقاش', 'No new expenses after discussion')
+                            : t('لا توجد مصروفات مسجلة', 'No expenses recorded')
+                          }
                         </TableCell>
                       </TableRow>
                     )}
@@ -406,66 +616,114 @@ const handleSendMessage = async () => {
                         {t('الإجمالي', 'Total')}
                       </TableCell>
                       <TableCell className="font-semibold text-lg">
-                        {formatCurrency(expenses.reduce((sum: number, exp: any) => sum + (parseFloat(String(exp.amount)) || 0), 0))}
+                        {formatCurrency((expensesDiscussionCompleted ? postDiscussionExpenses : expenses).reduce((sum: number, exp: any) => sum + (parseFloat(String(exp.amount)) || 0), 0))}
                       </TableCell>
                       <TableCell colSpan={2}></TableCell>
                     </TableRow>
                   </TableFooter>
                 </Table>
               </div>
-              {discussionCompleted && (
-                <div className="mt-8">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="text-lg font-semibold text-blue-800 mb-4">
-                      {t('مصروفات جديدة بعد النقاش', 'New Expenses After Discussion')}
-                    </h4>
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>{t('التاريخ', 'Date')}</TableHead>
-                            <TableHead>{t('الوصف', 'Description')}</TableHead>
-                            <TableHead>{t('المبلغ', 'Amount')}</TableHead>
-                            <TableHead>{t('الحالة', 'Status')}</TableHead>
-                            <TableHead>{t('فاتورة', 'Bill')}</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {postDiscussionExpenses.length === 0 && (
-                            <TableRow>
-                              <TableCell colSpan={5} className="text-center text-gray-500 py-8">
-                                {t('لا توجد مصروفات جديدة بعد النقاش', 'No new expenses after discussion')}
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                        <TableFooter>
-                          <TableRow>
-                            <TableCell colSpan={2} className="font-semibold">
-                              {t('إجمالي المصروفات الجديدة', 'New Expenses Total')}
-                            </TableCell>
-                            <TableCell className="font-semibold text-lg text-blue-600">
-                              {formatCurrency(postDiscussionExpenses.reduce((sum: number, exp: any) => sum + (parseFloat(String(exp.amount)) || 0), 0))}
-                            </TableCell>
-                            <TableCell colSpan={2}></TableCell>
-                          </TableRow>
-                        </TableFooter>
-                      </Table>
-                    </div>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Payments Table */}
+        {/* Payments Section */}
         <div className="lg:col-span-2">
+          {/* Payment Versions - Individual Tables */}
+          {paymentsDiscussionCompleted && paymentVersions.length > 0 && (
+            <div className="space-y-4 mb-6">
+              {paymentVersions.map((version, index) => {
+                const versionKey = `payments_${version.id}`;
+                const isVersionCollapsed = collapsedVersions[versionKey] !== false; // Default to collapsed
+                return (
+                  <Card key={version.id} className="bg-white dark:bg-gray-800">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <h5 
+                          className="text-md font-medium text-gray-700 dark:text-gray-300 cursor-pointer hover:text-gray-600"
+                          onClick={() => handleToggleVersion(versionKey)}
+                        >
+                          {t('المدفوعات', 'Payments')} {version.version_number}
+                          {isVersionCollapsed && (
+                            <span className="text-sm text-gray-500 ml-2">
+                              ({t('مطوي', 'Collapsed')})
+                            </span>
+                          )}
+                        </h5>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            {new Date(version.discussion_completed_at).toLocaleDateString()}
+                          </span>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleVersion(versionKey)}
+                              className="text-gray-600 border-gray-600"
+                            >
+                              {isVersionCollapsed ? t('توسيع', 'Expand') : t('طي', 'Collapse')}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                      {!isVersionCollapsed && (
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>{t('التاريخ', 'Date')}</TableHead>
+                                <TableHead>{t('المبلغ', 'Amount')}</TableHead>
+                                <TableHead>{t('الوصف', 'Description')}</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {version.payments_data.map((payment: any) => (
+                                <TableRow key={payment.id}>
+                                  <TableCell>{formatDate(payment.date)}</TableCell>
+                                  <TableCell className="font-semibold text-green-600">
+                                    {formatCurrency(payment.amount)}
+                                  </TableCell>
+                                  <TableCell>{t('إيصال نقدية', 'Cash Receipt')}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                            <TableFooter>
+                              <TableRow>
+                                <TableCell className="font-semibold">
+                                  {t('إجمالي المدفوعات', 'Payments Total')} {version.version_number}
+                                </TableCell>
+                                <TableCell className="font-semibold text-lg text-green-600">
+                                  {formatCurrency(version.payments_data.reduce((sum: number, pay: any) => sum + (parseFloat(String(pay.amount)) || 0), 0))}
+                                </TableCell>
+                                <TableCell></TableCell>
+                              </TableRow>
+                            </TableFooter>
+                          </Table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Current/New Payments Table */}
           <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-6">
-              <h3 className="text-xl mb-4 text-[#1A1A1A] dark:text-white">
-                {t('جدول المدفوعات', 'Payments Table')}
-              </h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className={`text-xl ${paymentsDiscussionCompleted ? 'text-green-600' : 'text-[#1A1A1A]'} dark:text-white`}>
+                  {paymentsDiscussionCompleted 
+                    ? t('مدفوعات جديدة بعد النقاش', 'New Payments After Discussion')
+                    : t('جدول المدفوعات', 'Payments Table')
+                  }
+                  {paymentsDiscussionCompleted && (
+                    <span className="text-sm text-green-600 ml-2">
+                      ({t('تم النقاش', 'Discussion Completed')})
+                    </span>
+                  )}
+                </h3>
+              </div>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -476,7 +734,7 @@ const handleSendMessage = async () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {payments.map((payment) => (
+                    {(paymentsDiscussionCompleted ? postDiscussionPayments : payments).map((payment) => (
                       <TableRow key={payment.id}>
                         <TableCell>{formatDate(payment.date)}</TableCell>
                         <TableCell className="font-semibold text-green-600">
@@ -485,10 +743,13 @@ const handleSendMessage = async () => {
                         <TableCell>{t('إيصال نقدية', 'Cash Receipt')}</TableCell>
                       </TableRow>
                     ))}
-                    {payments.length === 0 && (
+                    {(paymentsDiscussionCompleted ? postDiscussionPayments : payments).length === 0 && (
                       <TableRow>
                         <TableCell colSpan={3} className="text-center text-gray-500 py-8">
-                          {t('لا توجد مدفوعات مسجلة', 'No payments recorded')}
+                          {paymentsDiscussionCompleted 
+                            ? t('لا توجد مدفوعات جديدة بعد النقاش', 'No new payments after discussion')
+                            : t('لا توجد مدفوعات مسجلة', 'No payments recorded')
+                          }
                         </TableCell>
                       </TableRow>
                     )}
@@ -499,7 +760,7 @@ const handleSendMessage = async () => {
                         {t('الإجمالي', 'Total')}
                       </TableCell>
                       <TableCell className="font-semibold text-lg text-green-600">
-                        {formatCurrency(totalPaid)}
+                        {formatCurrency((paymentsDiscussionCompleted ? postDiscussionPayments : payments).reduce((sum: number, pay: any) => sum + (parseFloat(String(pay.amount)) || 0), 0))}
                       </TableCell>
                       <TableCell></TableCell>
                     </TableRow>

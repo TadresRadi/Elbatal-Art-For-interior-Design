@@ -14,7 +14,10 @@ class ClientSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = ['id','name','username','email','progress','total','paid','status',
-                  'phone','address','budget','created_at','discussion_completed','discussion_completed_at']
+                  'phone','address','budget','created_at','discussion_completed','discussion_completed_at',
+                  'expenses_discussion_completed','expenses_discussion_completed_at',
+                  'payments_discussion_completed','payments_discussion_completed_at',
+                  'expenses_version_count','payments_version_count']
 
     def get_progress(self, obj):
         if hasattr(obj, 'project') and hasattr(obj.project, 'progress'):

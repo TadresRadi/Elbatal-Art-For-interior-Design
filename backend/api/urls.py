@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 from api.views import (
     ClientViewSet, MeView, ProjectViewSet, AdminProgressViewSet, AdminExpenseViewSet,AdminClientViewSet, AdminDashboardView, ClientDashboardView, ExpenseViewSet, ProjectProgressViewSet, MessageViewSet, cash_receipt_views, WorkItemViewSet, get_work_items
 )
+from api.views.version_views import ExpenseVersionViewSet, PaymentVersionViewSet, ClientExpenseVersionViewSet, ClientPaymentVersionViewSet
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -20,6 +21,13 @@ router.register('admin/expenses', AdminExpenseViewSet, basename='admin-expenses'
 router.register('admin/progress', AdminProgressViewSet, basename='admin-progress')
 router.register('admin/work-items', WorkItemViewSet, basename='admin-work-items')
 
+# Version ViewSets with client_id parameter
+router.register(r'admin/expense-versions', ExpenseVersionViewSet, basename='admin-expense-versions')
+router.register(r'admin/payment-versions', PaymentVersionViewSet, basename='admin-payment-versions')
+
+# Client-accessible version endpoints (read-only)
+router.register(r'client/expense-versions', ClientExpenseVersionViewSet, basename='client-expense-versions')
+router.register(r'client/payment-versions', ClientPaymentVersionViewSet, basename='client-payment-versions')
 
 urlpatterns = [
     path('api/', include(router.urls)),
