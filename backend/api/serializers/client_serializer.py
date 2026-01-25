@@ -10,12 +10,11 @@ class ClientSerializer(serializers.ModelSerializer):
     progress = serializers.SerializerMethodField()
     total = serializers.SerializerMethodField()
     paid = serializers.SerializerMethodField()
-    status = serializers.SerializerMethodField()
 
     class Meta:
         model = Client
         fields = ['id','name','username','email','progress','total','paid','status',
-                  'phone','address','budget','created_at']
+                  'phone','address','budget','created_at','discussion_completed','discussion_completed_at']
 
     def get_progress(self, obj):
         if hasattr(obj, 'project') and hasattr(obj.project, 'progress'):
@@ -27,8 +26,3 @@ class ClientSerializer(serializers.ModelSerializer):
 
     def get_paid(self, obj):
         return float(obj.expenses.filter(status='paid').aggregate(total=Sum('amount'))['total'] or 0)
-
-    def get_status(self, obj):
-        if hasattr(obj, 'project'):
-            return obj.project.status
-        return 'pending'

@@ -15,6 +15,8 @@ import {
 } from '../../../components/ui/table';
 import { Card, CardContent } from '../../../components/ui/card';
 import { FileText, X, Printer, DollarSign, Eye, Plus } from 'lucide-react';
+import { EditableExpenseRow } from '../../../components/EditableExpenseRow';
+import { EditablePaymentRow } from '../../../components/EditablePaymentRow';
 import type { Translate, Expense } from '../types';
 import api from '../../../lib/api';
 
@@ -31,6 +33,13 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
   const [loading, setLoading] = useState(false);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [printType, setPrintType] = useState<'expenses' | 'payments'>('expenses');
+  const [discussionCompleted, setDiscussionCompleted] = useState(false);
+  const [expensesDiscussionCompleted, setExpensesDiscussionCompleted] = useState(false);
+  const [paymentsDiscussionCompleted, setPaymentsDiscussionCompleted] = useState(false);
+  const [expensesCollapsed, setExpensesCollapsed] = useState(false);
+  const [paymentsCollapsed, setPaymentsCollapsed] = useState(false);
+  const [originalExpenses, setOriginalExpenses] = useState<Expense[]>([]);
+  const [originalPayments, setOriginalPayments] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen && client) {
@@ -41,14 +50,42 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
   const loadData = async () => {
     if (!client) return;
     setLoading(true);
+    
     try {
+      // Load client data to check discussion status
+      const clientRes = await api.get(`admin/clients/${client.id}/`);
+      const clientData = clientRes.data;
+      
+      // Set discussion states based on client data
+      if (clientData.discussion_completed) {
+        setDiscussionCompleted(true);
+        setExpensesDiscussionCompleted(true);
+        setPaymentsDiscussionCompleted(true);
+      }
+      
       // Load expenses
       const expensesRes = await api.get(`admin/expenses/?client_id=${client.id}`);
-      setExpenses(expensesRes.data);
+      const expensesData = expensesRes.data;
       
-      // Load payments (cash receipts)
+      // Load payments
       const paymentsRes = await api.get(`admin/payments/?client_id=${client.id}`);
-      setPayments(paymentsRes.data);
+      const paymentsData = paymentsRes.data;
+      
+      // Store original data and set current state
+      setOriginalExpenses(expensesData);
+      setOriginalPayments(paymentsData);
+      
+      // If discussion is completed, show collapsed state
+      if (clientData.discussion_completed) {
+        setExpensesCollapsed(true);
+        setPaymentsCollapsed(true);
+        setExpenses([]); // Empty current expenses for new entries
+        setPayments([]); // Empty current payments for new entries
+      } else {
+        setExpenses(expensesData);
+        setPayments(paymentsData);
+      }
+      
     } catch (err) {
       console.error('Error loading data:', err);
     } finally {
@@ -138,6 +175,123 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
     setShowPrintPreview(false);
   };
 
+  const handleUpdateExpense = async (id: number, field: string, data: any) => {
+    try {
+      const res = await api.patch(`admin/expenses/${id}/`, data);
+      setExpenses(expenses.map(exp => exp.id === id ? res.data : exp));
+      alert(t('تم تحديث المصروف بنجاح', 'Expense updated successfully'));
+    } catch (err) {
+      console.error('Error updating expense:', err);
+      alert(t('فشل تحديث المصروف', 'Failed to update expense'));
+    }
+  };
+
+  const handleDeleteExpense = async (id: number) => {
+    try {
+      await api.delete(`admin/expenses/${id}/`);
+      setExpenses(expenses.filter(exp => exp.id !== id));
+      alert(t('تم حذف المصروف بنجاح', 'Expense deleted successfully'));
+    } catch (err) {
+      console.error('Error deleting expense:', err);
+      alert(t('فشل حذف المصروف', 'Failed to delete expense'));
+    }
+  };
+
+  const handleUpdatePayment = async (id: number, field: string, data: any) => {
+    try {
+      const res = await api.patch(`admin/payments/${id}/`, data);
+      setPayments(payments.map(pay => pay.id === id ? res.data : pay));
+      alert(t('تم تحديث الدفعة بنجاح', 'Payment updated successfully'));
+    } catch (err) {
+      console.error('Error updating payment:', err);
+      alert(t('فشل تحديث الدفعة', 'Failed to update payment'));
+    }
+  };
+
+  const handleDeletePayment = async (id: number) => {
+    try {
+      await api.delete(`admin/payments/${id}/`);
+      setPayments(payments.filter(pay => pay.id !== id));
+      alert(t('تم حذف الدفعة بنجاح', 'Payment deleted successfully'));
+    } catch (err) {
+      console.error('Error deleting payment:', err);
+      alert(t('فشل حذف الدفعة', 'Failed to delete payment'));
+    }
+  };
+
+  const handleAddExpense = () => {
+    // This would open a modal to add a new expense
+    // For now, we'll just show an alert
+    alert(t('إضافة مصروف جديد', 'Add new expense'));
+  };
+
+  const handleAddPayment = () => {
+    // This would open a modal to add a new payment
+    // For now, we'll just show an alert
+    alert(t('إضافة دفعة جديدة', 'Add new payment'));
+  };
+
+  const handleCompleteDiscussion = async (type: 'expenses' | 'payments') => {
+    if (!client) return;
+    
+    if (!window.confirm(t('هل أنت متأكد من إكمال النقاش مع العميل؟', 'Are you sure you want to complete the discussion with the client?'))) {
+      return;
+    }
+
+    try {
+      // Mark discussion as completed in the database
+      await api.patch(`admin/clients/${client.id}/`, { 
+        discussion_completed: true,
+        discussion_completed_at: new Date().toISOString()
+      });
+      
+      if (type === 'expenses') {
+        setExpensesDiscussionCompleted(true);
+        setExpensesCollapsed(true);
+        // Store current expenses as original and clear current
+        setOriginalExpenses([...expenses]);
+        setExpenses([]); // Show empty table for new entries
+      } else {
+        setPaymentsDiscussionCompleted(true);
+        setPaymentsCollapsed(true);
+        // Store current payments as original and clear current
+        setOriginalPayments([...payments]);
+        setPayments([]); // Show empty table for new entries
+      }
+      
+      alert(t('تم إكمال النقاش مع العميل بنجاح', 'Discussion completed with client successfully'));
+    } catch (err) {
+      console.error('Error completing discussion:', err);
+      alert(t('فشل إكمال النقاش', 'Failed to complete discussion'));
+    }
+  };
+
+  const handleToggleExpenses = () => {
+    if (expensesCollapsed) {
+      // Show original data
+      setExpenses([...originalExpenses]);
+      setExpensesCollapsed(false);
+    } else {
+      // Collapse and show empty
+      setOriginalExpenses([...expenses]);
+      setExpenses([]);
+      setExpensesCollapsed(true);
+    }
+  };
+
+  const handleTogglePayments = () => {
+    if (paymentsCollapsed) {
+      // Show original data
+      setPayments([...originalPayments]);
+      setPaymentsCollapsed(false);
+    } else {
+      // Collapse and show empty
+      setOriginalPayments([...payments]);
+      setPayments([]);
+      setPaymentsCollapsed(true);
+    }
+  };
+
   if (!isOpen || !client) return null;
 
   return (
@@ -167,12 +321,98 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
           </TabsList>
 
           <TabsContent value="expenses" className="mt-4">
+            {/* Original Expenses Table - Collapsed */}
+            {expensesDiscussionCompleted && (
+              <div className="mb-6">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 
+                      className="text-lg font-semibold text-gray-800 cursor-pointer hover:text-gray-600"
+                      onClick={handleToggleExpenses}
+                    >
+                      {t('المصروفات الأصلية', 'Original Expenses')}
+                      {expensesCollapsed && (
+                        <span className="text-sm text-gray-500 ml-2">
+                          ({t('مطوي', 'Collapsed')})
+                        </span>
+                      )}
+                    </h4>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleToggleExpenses}
+                      className="text-gray-600 border-gray-600"
+                    >
+                      {expensesCollapsed ? t('توسيع', 'Expand') : t('طي', 'Collapse')}
+                    </Button>
+                  </div>
+                  {!expensesCollapsed && (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{t('التاريخ', 'Date')}</TableHead>
+                            <TableHead>{t('الوصف', 'Description')}</TableHead>
+                            <TableHead>{t('المبلغ', 'Amount')}</TableHead>
+                            <TableHead>{t('الحالة', 'Status')}</TableHead>
+                            <TableHead>{t('فاتورة', 'Bill')}</TableHead>
+                            <TableHead>{t('الإجراءات', 'Actions')}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {originalExpenses.map((expense) => (
+                            <EditableExpenseRow
+                              key={expense.id}
+                              expense={expense}
+                              onUpdate={handleUpdateExpense}
+                              onDelete={handleDeleteExpense}
+                              formatCurrency={formatCurrency}
+                              t={t}
+                            />
+                          ))}
+                        </TableBody>
+                        <TableFooter>
+                          <TableRow>
+                            <TableCell colSpan={2} className="font-semibold">
+                              {t('إجمالي المصروفات الأصلية', 'Original Expenses Total')}
+                            </TableCell>
+                            <TableCell className="font-semibold text-lg text-gray-600">
+                              {formatCurrency(originalExpenses.reduce((sum, exp) => sum + (parseFloat(String(exp.amount)) || 0), 0))}
+                            </TableCell>
+                            <TableCell colSpan={3}></TableCell>
+                          </TableRow>
+                        </TableFooter>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* New Empty Expenses Table */}
             <div className="flex justify-between items-center mb-4">
-              <h4 className="text-lg font-semibold">{t('سجل المصروفات', 'Expenses Record')}</h4>
-              <Button variant="outline" size="sm" onClick={() => handlePrint('expenses')}>
-                <Printer className="h-4 w-4 mr-2" />
-                {t('طباعة', 'Print')}
-              </Button>
+              <h4 className="text-lg font-semibold">
+                {expensesDiscussionCompleted 
+                  ? t('مصروفات جديدة بعد النقاش', 'New Expenses After Discussion')
+                  : t('سجل المصروفات', 'Expenses Record')
+                }
+              </h4>
+              {!expensesDiscussionCompleted && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCompleteDiscussion('expenses')}
+                  className="text-green-600 border-green-600 hover:bg-green-50"
+                >
+                  {t('إكمال النقاش مع العميل', 'Discussion Completed with Client')}
+                </Button>
+              )}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => handlePrint('expenses')}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  {t('طباعة', 'Print')}
+                </Button>
+              </div>
             </div>
             
             <Card className="bg-white dark:bg-gray-800">
@@ -189,42 +429,30 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
                           <TableHead>{t('المبلغ', 'Amount')}</TableHead>
                           <TableHead>{t('الحالة', 'Status')}</TableHead>
                           <TableHead>{t('فاتورة', 'Bill')}</TableHead>
+                          <TableHead>{t('الإجراءات', 'Actions')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {expenses.map((expense) => (
-                          <TableRow key={expense.id}>
-                            <TableCell>{expense.date}</TableCell>
-                            <TableCell>{expense.description}</TableCell>
-                            <TableCell>{formatCurrency(parseFloat(String(expense.amount)) || 0)}</TableCell>
-                            <TableCell>
-                              <span
-                                className={`px-2 py-1 rounded text-xs font-medium ${
-                                  expense.status === 'pending'
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'text-white'
-                                }`}
-                              >
-                                {t(expense.status, expense.status)}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              {expense.bill_url ? (
-                                <a
-                                  href={expense.bill_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-500 hover:text-blue-700 flex items-center gap-1"
-                                >
-                                  <FileText className="h-4 w-4" />
-                                  {t('عرض', 'View')}
-                                </a>
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
+                          <EditableExpenseRow
+                            key={expense.id}
+                            expense={expense}
+                            onUpdate={handleUpdateExpense}
+                            onDelete={handleDeleteExpense}
+                            formatCurrency={formatCurrency}
+                            t={t}
+                          />
+                        ))}
+                        {expenses.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                              {expensesDiscussionCompleted 
+                                ? t('لا توجد مصروفات جديدة بعد النقاش', 'No new expenses after discussion')
+                                : t('لا توجد مصروفات مسجلة', 'No expenses recorded')
+                              }
                             </TableCell>
                           </TableRow>
-                        ))}
+                        )}
                       </TableBody>
                       <TableFooter>
                         <TableRow>
@@ -232,9 +460,9 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
                             {t('الإجمالي', 'Total')}
                           </TableCell>
                           <TableCell className="font-semibold text-lg">
-                            {formatCurrency(totalAmount)}
+                            {formatCurrency(expenses.reduce((sum, exp) => sum + (parseFloat(String(exp.amount)) || 0), 0))}
                           </TableCell>
-                          <TableCell colSpan={2}></TableCell>
+                          <TableCell colSpan={3}></TableCell>
                         </TableRow>
                       </TableFooter>
                     </Table>
@@ -245,12 +473,96 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
           </TabsContent>
 
           <TabsContent value="payments" className="mt-4">
+            {/* Original Payments Table - Collapsed */}
+            {paymentsDiscussionCompleted && (
+              <div className="mb-6">
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 
+                      className="text-lg font-semibold text-gray-800 cursor-pointer hover:text-gray-600"
+                      onClick={handleTogglePayments}
+                    >
+                      {t('المدفوعات الأصلية', 'Original Payments')}
+                      {paymentsCollapsed && (
+                        <span className="text-sm text-gray-500 ml-2">
+                          ({t('مطوي', 'Collapsed')})
+                        </span>
+                      )}
+                    </h4>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleTogglePayments}
+                      className="text-gray-600 border-gray-600"
+                    >
+                      {paymentsCollapsed ? t('توسيع', 'Expand') : t('طي', 'Collapse')}
+                    </Button>
+                  </div>
+                  {!paymentsCollapsed && (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{t('التاريخ', 'Date')}</TableHead>
+                            <TableHead>{t('المبلغ', 'Amount')}</TableHead>
+                            <TableHead>{t('الوصف', 'Description')}</TableHead>
+                            <TableHead>{t('الإجراءات', 'Actions')}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {originalPayments.map((payment) => (
+                            <EditablePaymentRow
+                              key={payment.id}
+                              payment={payment}
+                              onUpdate={handleUpdatePayment}
+                              onDelete={handleDeletePayment}
+                              formatCurrency={formatCurrency}
+                              t={t}
+                            />
+                          ))}
+                        </TableBody>
+                        <TableFooter>
+                          <TableRow>
+                            <TableCell className="font-semibold">
+                              {t('إجمالي المدفوعات الأصلية', 'Original Payments Total')}
+                            </TableCell>
+                            <TableCell className="font-semibold text-lg text-gray-600">
+                              {formatCurrency(originalPayments.reduce((sum, pay) => sum + (parseFloat(String(pay.amount)) || 0), 0))}
+                            </TableCell>
+                            <TableCell colSpan={2}></TableCell>
+                          </TableRow>
+                        </TableFooter>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* New Empty Payments Table */}
             <div className="flex justify-between items-center mb-4">
-              <h4 className="text-lg font-semibold">{t('سجل المدفوعات', 'Payments Record')}</h4>
-              <Button variant="outline" size="sm" onClick={() => handlePrint('payments')}>
-                <Printer className="h-4 w-4 mr-2" />
-                {t('طباعة', 'Print')}
-              </Button>
+              <h4 className="text-lg font-semibold">
+                {paymentsDiscussionCompleted 
+                  ? t('مدفوعات جديدة بعد النقاش', 'New Payments After Discussion')
+                  : t('سجل المدفوعات', 'Payments Record')
+                }
+              </h4>
+              {!paymentsDiscussionCompleted && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleCompleteDiscussion('payments')}
+                  className="text-green-600 border-green-600 hover:bg-green-50"
+                >
+                  {t('إكمال النقاش مع العميل', 'Discussion Completed with Client')}
+                </Button>
+              )}
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => handlePrint('payments')}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  {t('طباعة', 'Print')}
+                </Button>
+              </div>
             </div>
             
             <Card className="bg-white dark:bg-gray-800">
@@ -265,22 +577,27 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
                           <TableHead>{t('التاريخ', 'Date')}</TableHead>
                           <TableHead>{t('المبلغ', 'Amount')}</TableHead>
                           <TableHead>{t('الوصف', 'Description')}</TableHead>
+                          <TableHead>{t('الإجراءات', 'Actions')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {payments.map((payment) => (
-                          <TableRow key={payment.id}>
-                            <TableCell>{payment.date}</TableCell>
-                            <TableCell className="font-semibold text-green-600">
-                              {formatCurrency(parseFloat(String(payment.amount)) || 0)}
-                            </TableCell>
-                            <TableCell>{t('إيصال نقدية', 'Cash Receipt')}</TableCell>
-                          </TableRow>
+                          <EditablePaymentRow
+                            key={payment.id}
+                            payment={payment}
+                            onUpdate={handleUpdatePayment}
+                            onDelete={handleDeletePayment}
+                            formatCurrency={formatCurrency}
+                            t={t}
+                          />
                         ))}
                         {payments.length === 0 && (
                           <TableRow>
-                            <TableCell colSpan={3} className="text-center text-gray-500 py-8">
-                              {t('لا توجد مدفوعات مسجلة', 'No payments recorded')}
+                            <TableCell colSpan={4} className="text-center text-gray-500 py-8">
+                              {paymentsDiscussionCompleted 
+                                ? t('لا توجد مدفوعات جديدة بعد النقاش', 'No new payments after discussion')
+                                : t('لا توجد مدفوعات مسجلة', 'No payments recorded')
+                              }
                             </TableCell>
                           </TableRow>
                         )}
@@ -291,9 +608,9 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
                             {t('الإجمالي', 'Total')}
                           </TableCell>
                           <TableCell className="font-semibold text-lg text-green-600">
-                            {formatCurrency(totalPayments)}
+                            {formatCurrency(payments.reduce((sum, pay) => sum + (parseFloat(String(pay.amount)) || 0), 0))}
                           </TableCell>
-                          <TableCell></TableCell>
+                          <TableCell colSpan={2}></TableCell>
                         </TableRow>
                       </TableFooter>
                     </Table>

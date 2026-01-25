@@ -8,3 +8,4 @@ from .admin_client_view import AdminClientViewSet
 from .admin_expense_view import AdminExpenseViewSet
 from .admin_progress_view import AdminProgressViewSet
 from .auth_view import MeView
+from .work_item_views import WorkItemViewSet, get_work_items

@@ -46,16 +46,36 @@ class AdminClientViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='complete')
     def mark_complete(self, request, pk=None):
         client = self.get_object()
+        
+        # Update client status directly
+        client.status = 'completed'
+        client.save()
+        
+        # Also update project if it exists
         project = getattr(client, 'project', None)
-
         if project:
             project.status = 'completed'
             project.progress.percentage = 100
             project.progress.save()
             project.save()
-            return Response({'status':'success'})
+            
+        return Response({'status':'success'})
 
-        return Response({'status':'no-project'}, status=status.HTTP_400_BAD_REQUEST)
+    @action(detail=True, methods=['post'], url_path='retrieve')
+    def retrieve_client(self, request, pk=None):
+        client = self.get_object()
+        
+        # Update client status back to active
+        client.status = 'active'
+        client.save()
+        
+        # Also update project if it exists
+        project = getattr(client, 'project', None)
+        if project:
+            project.status = 'active'
+            project.save()
+            
+        return Response({'status':'success'})
 
     @action(detail=True, methods=['patch'], url_path='progress')
     def update_progress(self, request, pk=None):

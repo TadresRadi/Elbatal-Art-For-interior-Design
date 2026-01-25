@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '../../../components/ui/table';
-import { CheckCircle, Edit, MessageSquare, Trash2, TrendingUp } from 'lucide-react';
+import { CheckCircle, Edit, MessageSquare, Trash2, TrendingUp, RotateCcw } from 'lucide-react';
 import type { Client, Translate } from '../types';
 
 type ClientsTableProps = {
@@ -21,6 +21,7 @@ type ClientsTableProps = {
   onComplete: (clientId: number) => void;
   onDelete: (clientId: number) => void;
   onSetProgress: (client: Client) => void;
+  onRetrieve?: (clientId: number) => void;
   completed?: boolean;
   deleted?: boolean;
 };
@@ -35,6 +36,7 @@ export function ClientsTable({
   onComplete,
   onDelete,
   onSetProgress,
+  onRetrieve,
   completed,
   deleted,
 }: ClientsTableProps) {
@@ -116,6 +118,16 @@ export function ClientsTable({
                       title={t('تم الإكمال', 'Mark as Completed')}
                     >
                       <CheckCircle className="h-4 w-4 text-green-600" />
+                    </Button>
+                  )}
+                  {completed && onRetrieve && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onRetrieve(c.id)}
+                      title={t('استرجاع', 'Retrieve')}
+                    >
+                      <RotateCcw className="h-4 w-4 text-blue-600" />
                     </Button>
                   )}
                   <Button

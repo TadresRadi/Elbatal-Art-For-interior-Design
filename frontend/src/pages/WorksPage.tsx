@@ -2,63 +2,17 @@ import { useApp } from '../lib/context';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Badge } from '../components/ui/badge';
-
-const projects = [
-  {
-    id: 1,
-    title: { ar: 'فيلا فاخرة - التجمع الخامس', en: 'Luxury Villa - Fifth Settlement' },
-    category: 'villa',
-    image:
-      'https://images.unsplash.com/photo-1668365011614-9c4a49a0e89d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjB2aWxsYSUyMGludGVyaW9yfGVufDF8fHx8MTc1OTk0NTkxM3ww&ixlib=rb-4.1.0&q=80&w=1080',
-    beforeImage:
-      'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800',
-    afterImage:
-      'https://images.unsplash.com/photo-1668365011614-9c4a49a0e89d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjB2aWxsYSUyMGludGVyaW9yfGVufDF8fHx8MTc1OTk0NTkxM3ww&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 2,
-    title: { ar: 'شقة عصرية - المعادي', en: 'Modern Apartment - Maadi' },
-    category: 'apartment',
-    image:
-      'https://images.unsplash.com/photo-1690489965043-ec15758cce71?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBpbnRlcmlvciUyMGxpdmluZyUyMHJvb218ZW58MXx8fHwxNzU5OTk2NzcxfDA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 3,
-    title: { ar: 'مكتب تنفيذي - القاهرة الجديدة', en: 'Executive Office - New Cairo' },
-    category: 'office',
-    image:
-      'https://images.unsplash.com/photo-1497366754035-f200968a6e72?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBvZmZpY2UlMjBpbnRlcmlvcnxlbnwxfHx8fDE3NTk5ODI0NTd8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 4,
-    title: { ar: 'غرفة نوم فاخرة', en: 'Luxury Bedroom' },
-    category: 'apartment',
-    image:
-      'https://images.unsplash.com/photo-1680503146476-abb8c752e1f4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBiZWRyb29tJTIwZGVzaWdufGVufDF8fHx8MTc2MDAwMzg5NXww&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 5,
-    title: { ar: 'مطبخ عصري', en: 'Modern Kitchen' },
-    category: 'villa',
-    image:
-      'https://images.unsplash.com/photo-1758548157243-f4ef3e614684?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVnYW50JTIwa2l0Y2hlbiUyMGRlc2lnbnxlbnwxfHx8fDE3NTk5NDMyMjd8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-  {
-    id: 6,
-    title: { ar: 'حمام فاخر بالرخام', en: 'Luxury Marble Bathroom' },
-    category: 'apartment',
-    image:
-      'https://images.unsplash.com/photo-1658760046471-896cbc719c9d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsdXh1cnklMjBiYXRocm9vbSUyMG1hcmJsZXxlbnwxfHx8fDE3NTk5NzQyNjh8MA&ixlib=rb-4.1.0&q=80&w=1080',
-  },
-];
+import api from '../lib/api';
 
 export function WorksPage() {
   const { t, language } = useApp();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedProject, setSelectedProject] = useState<number | null>(null);
   const [beforeAfterSlider, setBeforeAfterSlider] = useState(50);
+  const [projects, setProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const categories = [
     { value: 'all', label: { ar: 'الكل', en: 'All' } },
@@ -66,6 +20,43 @@ export function WorksPage() {
     { value: 'villa', label: { ar: 'فلل', en: 'Villas' } },
     { value: 'office', label: { ar: 'مكاتب', en: 'Offices' } },
   ];
+
+  useEffect(() => {
+    const loadWorkItems = async () => {
+      try {
+        const res = await api.get('work-items/');
+        const transformedData = res.data.map((item: any) => ({
+          id: item.id,
+          title: { 
+            ar: item.title_ar, 
+            en: item.title_en 
+          },
+          category: item.category,
+          image: item.image ? (item.image.startsWith('http') ? item.image : `http://127.0.0.1:8000${item.image}`) : (item.after_image ? (item.after_image.startsWith('http') ? item.after_image : `http://127.0.0.1:8000${item.after_image}`) : ''),
+          beforeImage: item.before_image ? (item.before_image.startsWith('http') ? item.before_image : `http://127.0.0.1:8000${item.before_image}`) : undefined,
+          afterImage: item.after_image ? (item.after_image.startsWith('http') ? item.after_image : `http://127.0.0.1:8000${item.after_image}`) : undefined,
+        }));
+        setProjects(transformedData);
+      } catch (err) {
+        console.error('Error loading work items:', err);
+        // Fallback to hardcoded data if API fails
+        setProjects([
+          {
+            id: 1,
+            title: { ar: 'فيلا فاخرة - التجمع الخامس', en: 'Luxury Villa - Fifth Settlement' },
+            category: 'villa',
+            image: 'https://images.unsplash.com/photo-1668365011614-9c4a49a0e89d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjB2aWxsYSUyMGludGVyaW9yfGVufDF8fHx8MTc1OTk0NTkxM3ww&ixlib=rb-4.1.0&q=80&w=1080',
+            beforeImage: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800',
+            afterImage: 'https://images.unsplash.com/photo-1668365011614-9c4a49a0e89d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjB2aWxsYSUyMGludGVyaW9yfGVufDF8fHx8MTc1OTk0NTkxM3ww&ixlib=rb-4.1.0&q=80&w=1080',
+          },
+        ]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadWorkItems();
+  }, []);
 
   const filteredProjects =
     selectedCategory === 'all'
@@ -116,40 +107,53 @@ export function WorksPage() {
       {/* Gallery */}
       <section className="py-12 bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.map((project) => (
-              <Card
-                key={project.id}
-                className="overflow-hidden cursor-pointer hover:shadow-xl transition-shadow bg-white dark:bg-gray-800"
-                onClick={() => setSelectedProject(project.id)}
-              >
-                <div className="relative h-64 overflow-hidden">
-                  <ImageWithFallback
-                    src={project.image}
-                    alt={project.title[language]}
-                    className="w-full h-full object-cover transition-transform hover:scale-110"
-                  />
-                  <Badge className="absolute top-4 left-4 bg-[#D4AF37] text-white">
-                    {project.category === 'villa'
-                      ? t('فيلا', 'Villa')
-                      : project.category === 'apartment'
-                      ? t('شقة', 'Apartment')
-                      : t('مكتب', 'Office')}
-                  </Badge>
-                </div>
-                <CardContent className="p-4">
-                  <h3 className="text-[#1A1A1A] dark:text-white">
-                    {project.title[language]}
-                  </h3>
-                  {project.beforeImage && project.afterImage && (
-                    <p className="text-sm text-[#D4AF37] mt-2">
-                      {t('شاهد قبل وبعد', 'View Before & After')}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D4AF37] mx-auto"></div>
+              <p className="mt-4 text-gray-600">{t('جاري التحميل...', 'Loading...')}</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProjects.map((project) => (
+                <Card
+                  key={project.id}
+                  className="overflow-hidden cursor-pointer hover:shadow-xl transition-shadow bg-white dark:bg-gray-800"
+                  onClick={() => setSelectedProject(project.id)}
+                >
+                  <div className="relative h-64 overflow-hidden">
+                    <ImageWithFallback
+                      src={project.image}
+                      alt={project.title[language]}
+                      className="w-full h-full object-cover transition-transform hover:scale-110"
+                    />
+                    <Badge className="absolute top-4 left-4 bg-[#D4AF37] text-white">
+                      {project.category === 'villa'
+                        ? t('فيلا', 'Villa')
+                        : project.category === 'apartment'
+                        ? t('شقة', 'Apartment')
+                        : t('مكتب', 'Office')}
+                    </Badge>
+                  </div>
+                  <CardContent className="p-4">
+                    <h3 className="text-[#1A1A1A] dark:text-white">
+                      {project.title[language]}
+                    </h3>
+                    {project.beforeImage && project.afterImage && (
+                      <p className="text-sm text-[#D4AF37] mt-2">
+                        {t('شاهد قبل وبعد', 'View Before & After')}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {!loading && filteredProjects.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">{t('لا توجد مشاريع في هذه الفئة', 'No projects in this category')}</p>
+            </div>
+          )}
         </div>
       </section>
 

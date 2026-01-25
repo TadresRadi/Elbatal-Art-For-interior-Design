@@ -40,6 +40,8 @@ export type Client = {
   phone?: string;
   address?: string;
   budget?: number;
+  discussion_completed?: boolean;
+  discussion_completed_at?: string;
 };
 
 export type CreateClientForm = {

@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from api.views import (
-    ClientViewSet, MeView, ProjectViewSet, AdminProgressViewSet, AdminExpenseViewSet,AdminClientViewSet, AdminDashboardView, ClientDashboardView, ExpenseViewSet, ProjectProgressViewSet, MessageViewSet, cash_receipt_views
+    ClientViewSet, MeView, ProjectViewSet, AdminProgressViewSet, AdminExpenseViewSet,AdminClientViewSet, AdminDashboardView, ClientDashboardView, ExpenseViewSet, ProjectProgressViewSet, MessageViewSet, cash_receipt_views, WorkItemViewSet, get_work_items
 )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -18,7 +18,7 @@ router.register(r'messages', MessageViewSet, basename='message')
 router.register('admin/clients', AdminClientViewSet, basename='admin-clients')
 router.register('admin/expenses', AdminExpenseViewSet, basename='admin-expenses')
 router.register('admin/progress', AdminProgressViewSet, basename='admin-progress')
-
+router.register('admin/work-items', WorkItemViewSet, basename='admin-work-items')
 
 
 urlpatterns = [
@@ -30,6 +30,7 @@ urlpatterns = [
     path('api/admin/cash-receipts/', cash_receipt_views.create_cash_receipt, name='create-cash-receipt'),
     path('api/admin/payments/', cash_receipt_views.get_admin_client_payments, name='get-admin-client-payments'),
     path('api/client/payments/', cash_receipt_views.get_client_cash_receipts, name='get-client-payments'),
+    path('api/work-items/', get_work_items, name='get-work-items'),
     path('auth/me/', MeView.as_view()),
     path('login/', CustomAuthToken.as_view(), name='custom-login'),
 

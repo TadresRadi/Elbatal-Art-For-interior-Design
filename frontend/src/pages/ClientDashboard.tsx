@@ -36,6 +36,9 @@ export function ClientDashboard() {
   const [projectData, setProjectData] = useState<any>(null);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
+  const [postDiscussionExpenses, setPostDiscussionExpenses] = useState<any[]>([]);
+  const [postDiscussionPayments, setPostDiscussionPayments] = useState<any[]>([]);
+  const [discussionCompleted, setDiscussionCompleted] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,6 +47,10 @@ export function ClientDashboard() {
         
         if (dashboardRes.data.project) {
           setProjectData(dashboardRes.data.project);
+          // Set discussion completed status from project data
+          if (dashboardRes.data.project.discussion_completed) {
+            setDiscussionCompleted(true);
+          }
         }
         
         // Fetch expenses
@@ -328,9 +335,18 @@ const handleSendMessage = async () => {
         <div className="lg:col-span-2 mb-8">
           <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-6">
-              <h3 className="text-xl mb-4 text-[#1A1A1A] dark:text-white">
-                {t('جدول المصروفات', 'Expenses Table')}
-              </h3>
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className={`text-xl ${discussionCompleted ? 'text-green-600' : 'text-[#1A1A1A]'} dark:text-white`}>
+                    {t('جدول المصروفات', 'Expenses Table')}
+                    {discussionCompleted && (
+                      <span className="text-sm text-green-600 ml-2">
+                        ({t('تم النقاش', 'Discussion Completed')})
+                      </span>
+                    )}
+                  </h3>
+                </div>
+              </div>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -376,6 +392,13 @@ const handleSendMessage = async () => {
                         </TableCell>
                       </TableRow>
                     ))}
+                    {expenses.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-gray-500 py-8">
+                          {t('لا توجد مصروفات مسجلة', 'No expenses recorded')}
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                   <TableFooter>
                     <TableRow>
@@ -383,13 +406,55 @@ const handleSendMessage = async () => {
                         {t('الإجمالي', 'Total')}
                       </TableCell>
                       <TableCell className="font-semibold text-lg">
-                        {formatCurrency(totalExpenses)}
+                        {formatCurrency(expenses.reduce((sum: number, exp: any) => sum + (parseFloat(String(exp.amount)) || 0), 0))}
                       </TableCell>
                       <TableCell colSpan={2}></TableCell>
                     </TableRow>
                   </TableFooter>
                 </Table>
               </div>
+              {discussionCompleted && (
+                <div className="mt-8">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold text-blue-800 mb-4">
+                      {t('مصروفات جديدة بعد النقاش', 'New Expenses After Discussion')}
+                    </h4>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{t('التاريخ', 'Date')}</TableHead>
+                            <TableHead>{t('الوصف', 'Description')}</TableHead>
+                            <TableHead>{t('المبلغ', 'Amount')}</TableHead>
+                            <TableHead>{t('الحالة', 'Status')}</TableHead>
+                            <TableHead>{t('فاتورة', 'Bill')}</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {postDiscussionExpenses.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center text-gray-500 py-8">
+                                {t('لا توجد مصروفات جديدة بعد النقاش', 'No new expenses after discussion')}
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                        <TableFooter>
+                          <TableRow>
+                            <TableCell colSpan={2} className="font-semibold">
+                              {t('إجمالي المصروفات الجديدة', 'New Expenses Total')}
+                            </TableCell>
+                            <TableCell className="font-semibold text-lg text-blue-600">
+                              {formatCurrency(postDiscussionExpenses.reduce((sum: number, exp: any) => sum + (parseFloat(String(exp.amount)) || 0), 0))}
+                            </TableCell>
+                            <TableCell colSpan={2}></TableCell>
+                          </TableRow>
+                        </TableFooter>
+                      </Table>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

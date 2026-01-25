@@ -29,6 +29,19 @@ class Client(models.Model):
 
     is_active = models.BooleanField(default=True)
     is_deleted = models.BooleanField(default=False)
+    
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ('active', 'Active'),
+            ('completed', 'Completed'),
+            ('pending', 'Pending'),
+        ],
+        default='active'
+    )
+    
+    discussion_completed = models.BooleanField(default=False)
+    discussion_completed_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
 

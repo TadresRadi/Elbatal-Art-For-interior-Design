@@ -83,23 +83,12 @@ export function AdminDashboard() {
     }
   };
 
-  const handleCompleteClient = async (id: number) => {
+  const handleCompleteClient = async (clientId: number) => {
     try {
-      await api.post(`admin/clients/${id}/complete/`);
-      setClients(clients.map(c => c.id === id ? { ...c, status: 'completed' } : c));
-      alert(t('تم إكمال العميل بنجاح', 'Client completed successfully'));
+      await api.post(`admin/clients/${clientId}/complete/`);
+      setClients(clients.map(cl => cl.id === clientId ? { ...cl, status: 'completed', progress: 100 } : cl));
     } catch (err) {
-      console.error('Error completing client:', err);
-    }
-  };
-
-  const handleRetrieveClient = async (id: number) => {
-    try {
-      await api.post(`admin/clients/${id}/retrieve/`);
-      setClients(clients.map(c => c.id === id ? { ...c, status: 'active' } : c));
-      alert(t('تم استرجاع العميل بنجاح', 'Client retrieved successfully'));
-    } catch (err) {
-      console.error('Error retrieving client:', err);
+      console.error(err);
     }
   };
 
@@ -217,18 +206,13 @@ export function AdminDashboard() {
       formData.append('title_en', item.title_en);
       formData.append('category', item.category);
       
-      // Only add image fields if files are provided
       if (files) {
-        if (files.before_image) {
-          formData.append('before_image', files.before_image);
-        }
-        if (files.after_image) {
-          formData.append('after_image', files.after_image);
-          // The backend will automatically set this as the main image
-        }
+        if (files.image) formData.append('image', files.image);
+        if (files.before_image) formData.append('before_image', files.before_image);
+        if (files.after_image) formData.append('after_image', files.after_image);
       }
 
-      let res: any;
+      let res;
       if (item.id) {
         // Update existing work item
         res = await api.patch(`admin/work-items/${item.id}/`, formData, {
@@ -299,13 +283,7 @@ export function AdminDashboard() {
     const loadWorkItems = async () => {
       try {
         const res = await api.get('admin/work-items/');
-        const transformedData = res.data.map((item: any) => ({
-          ...item,
-          image: item.image ? (item.image.startsWith('http') ? item.image : `http://127.0.0.1:8000${item.image}`) : (item.after_image ? (item.after_image.startsWith('http') ? item.after_image : `http://127.0.0.1:8000${item.after_image}`) : null),
-          before_image: item.before_image ? (item.before_image.startsWith('http') ? item.before_image : `http://127.0.0.1:8000${item.before_image}`) : null,
-          after_image: item.after_image ? (item.after_image.startsWith('http') ? item.after_image : `http://127.0.0.1:8000${item.after_image}`) : null,
-        }));
-        setWorkItems(transformedData);
+        setWorkItems(res.data);
       } catch (err) {
         console.error('Error loading work items:', err);
       }
@@ -440,32 +418,45 @@ export function AdminDashboard() {
 
       {/* Tabs */}
       <div className="container mx-auto px-6 py-8">
-        <Tabs value={tab} onValueChange={setTab}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="overview">{t('نظرة عامة', 'Overview')}</TabsTrigger>
-            <TabsTrigger value="clients">{t('العملاء', 'Clients')}</TabsTrigger>
-            <TabsTrigger value="completed">{t('عملاء منتهية', 'Completed')}</TabsTrigger>
-            <TabsTrigger value="work-items">{t('صفحة أعمالنا', 'Our Work Page')}</TabsTrigger>
-          </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <StatCard title={t('إجمالي العملاء', 'Total Clients')} value={stats.total} icon={<Users className="h-6 w-6 text-blue-600" />} />
-              <StatCard title={t('مشاريع نشطة', 'Active Projects')} value={stats.active} icon={<Briefcase className="h-6 w-6 text-green-600" />} />
-              <StatCard title={t('مشاريع مكتملة', 'Completed')} value={stats.completed} icon={<TrendingUp className="h-6 w-6 text-purple-600" />} />
-              <StatCard title={t('إجمالي المدفوع', 'Total Paid')} value={formatCurrency(stats.totalRevenue)} icon={<DollarSign className="h-6 w-6 text-yellow-600" />} />
-            </div>
+      <TabsContent value="overview" className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <StatCard title={t('إجمالي العملاء', 'Total Clients')} value={stats.total} icon={<Users className="h-6 w-6 text-blue-600" />} />
+          <StatCard title={t('مشاريع نشطة', 'Active Projects')} value={stats.active} icon={<Briefcase className="h-6 w-6 text-green-600" />} />
+          <StatCard title={t('مشاريع مكتملة', 'Completed')} value={stats.completed} icon={<TrendingUp className="h-6 w-6 text-purple-600" />} />
+          <StatCard title={t('إجمالي المدفوع', 'Total Paid')} value={formatCurrency(stats.totalRevenue)} icon={<DollarSign className="h-6 w-6 text-yellow-600" />} />
+        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-              <StatCard title={t('إجمالي المستلم', 'Total Received')} value={formatCurrency(stats.totalReceived)} icon={<DollarSign className="h-6 w-6 text-green-600" />} />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
+          <StatCard title={t('إجمالي المستلم', 'Total Received')} value={formatCurrency(stats.totalReceived)} icon={<DollarSign className="h-6 w-6 text-green-600" />} />
+        </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-4">{t('حالة العملاء', 'Client Status')}</h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold mb-4">{t('حالة العملاء', 'Client Status')}</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={statusData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => `${entry.name}: ${entry.value}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    <Cell fill="#10b981" />
+                    <Cell fill="#f59e0b" />
+                    <Cell fill="#6b7280" />
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
                       <Pie
                         data={statusData}
                         cx="50%"
@@ -542,29 +533,12 @@ export function AdminDashboard() {
                   onComplete={handleCompleteClient}
                   onDelete={deleteClient}
                   onSetProgress={handleSetProgress}
-                  onRetrieve={handleRetrieveClient}
                   completed
                 />
               </CardContent>
             </Card>
           </TabsContent>
-
-          <TabsContent value="work-items">
-            <Card>
-              <CardContent className="p-6">
-                <WorkItemsTable
-                  list={workItems}
-                  onEdit={handleEditWorkItem}
-                  onDelete={handleDeleteWorkItem}
-                  onCreateNew={handleCreateWorkItem}
-                  t={t}
-                  language={language}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
-
         <ChatModal
           modalChat={modalChat}
           t={t}
@@ -603,22 +577,6 @@ export function AdminDashboard() {
           client={modalProgress}
           onUpdateProgress={handleUpdateProgress}
           t={t}
-        />
-        <CreateWorkItemModal
-          isOpen={modalCreateWorkItem}
-          onClose={() => setModalCreateWorkItem(false)}
-          item={null}
-          onSave={handleSaveWorkItem}
-          t={t}
-          language={language}
-        />
-        <CreateWorkItemModal
-          isOpen={!!modalWorkItem}
-          onClose={() => setModalWorkItem(null)}
-          item={modalWorkItem}
-          onSave={handleSaveWorkItem}
-          t={t}
-          language={language}
         />
       </div>
     </div>
