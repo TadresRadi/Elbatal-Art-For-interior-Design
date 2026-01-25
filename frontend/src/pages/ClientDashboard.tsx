@@ -62,10 +62,6 @@ export function ClientDashboard() {
           setPaymentsDiscussionCompleted(dashboardRes.data.project.payments_discussion_completed || false);
           setExpensesDiscussionCompletedAt(dashboardRes.data.project.expenses_discussion_completed_at || null);
           setPaymentsDiscussionCompletedAt(dashboardRes.data.project.payments_discussion_completed_at || null);
-          
-          console.log('Project data:', dashboardRes.data.project);
-          console.log('Expenses discussion completed:', dashboardRes.data.project.expenses_discussion_completed);
-          console.log('Payments discussion completed:', dashboardRes.data.project.payments_discussion_completed);
         }
         
         // Get user info for client_id
@@ -78,23 +74,19 @@ export function ClientDashboard() {
             const expenseVersionsRes = await api.get(`client/expense-versions/`);
             const expenseVersionsData = expenseVersionsRes.data;
             setExpenseVersions(expenseVersionsData);
-            console.log('Expense versions:', expenseVersionsData);
             
             // Load payment versions using client endpoints
             const paymentVersionsRes = await api.get(`client/payment-versions/`);
             const paymentVersionsData = paymentVersionsRes.data;
             setPaymentVersions(paymentVersionsData);
-            console.log('Payment versions:', paymentVersionsData);
             
             // Fetch current expenses (all expenses for the current/new table)
             const expensesRes = await api.get('expenses/');
             const allExpenses = expensesRes.data;
-            console.log('All expenses from API:', allExpenses);
             
             // Fetch current payments (cash receipts)
             const paymentsRes = await api.get('client/payments/');
             const allPayments = paymentsRes.data;
-            console.log('All payments from API:', allPayments);
             
             // For client side: 
             // - If discussion completed, show versioned tables (old data) + current table (new data ONLY)
@@ -112,19 +104,13 @@ export function ClientDashboard() {
                   return expDate > discussionDate; // Use > instead of >= to be more precise
                 });
                 
-                console.log('Discussion date:', discussionDate);
-                console.log('All expenses:', allExpenses);
-                console.log('New expenses after discussion:', newExpenses);
-                
                 setPostDiscussionExpenses(newExpenses);
                 setExpenses([]); // Clear old expenses since they're in versions
               } else {
-                console.log('No expense version found, using all expenses');
                 setExpenses(allExpenses);
                 setPostDiscussionExpenses([]);
               }
             } else {
-              console.log('Expenses discussion not completed, using all expenses');
               setExpenses(allExpenses);
               setPostDiscussionExpenses([]);
             }
@@ -141,39 +127,33 @@ export function ClientDashboard() {
                   return payDate > discussionDate; // Use > instead of >= to be more precise
                 });
                 
-                console.log('Payment discussion date:', discussionDate);
-                console.log('All payments:', allPayments);
-                console.log('New payments after discussion:', newPayments);
-                
                 setPostDiscussionPayments(newPayments);
                 setPayments([]); // Clear old payments since they're in versions
               } else {
-                console.log('No payment version found, using all payments');
                 setPayments(allPayments);
                 setPostDiscussionPayments([]);
               }
             } else {
-              console.log('Payments discussion not completed, using all payments');
               setPayments(allPayments);
               setPostDiscussionPayments([]);
             }
           } catch (err) {
-            console.error('Error loading data:', err);
+            // Error handling is done by the API service
           }
         }
 
         // Get client's own messages
         if (user.client_id) {
-          const messagesRes = await api.get(`messages/?client_id=${user.client_id}`);
+          const messagesRes = await api.get(`messages/?client=${user.client_id}`);
           setMessages(messagesRes.data);
         }
       } catch (error: any) {
-        console.error('Error fetching data:', error);
-        if (error.response?.status === 401) {
-          alert('Session expired, please login again.');
-          window.location.hash = '#home';
-        }
-      }
+    // Error handling is done by the API service
+    if (error.response?.status === 401) {
+      alert('Session expired, please login again.');
+      window.location.hash = '#home';
+    }
+  }
     };
 
     fetchData();
@@ -184,38 +164,36 @@ export function ClientDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  const totalPaid = payments.reduce((sum, payment) => {
+  const totalPaid = payments.reduce((sum: any, payment: any) => {
     const amount = parseFloat(String(payment.amount)) || 0;
     return sum + amount;
   }, 0);
 
-  const totalExpenses = expenses.reduce((sum, expense) => {
+  const totalExpenses = expenses.reduce((sum: any, expense: any) => {
     const amount = parseFloat(String(expense.amount)) || 0;
     return sum + amount;
   }, 0);
 
-const handleSendMessage = async () => {
-  if (!message.trim()) return;
+  const handleSendMessage = async () => {
+    if (!message.trim()) return;
 
-  try {
-    // Get user info to extract client_id
-    const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
-    
-    const res = await api.post('messages/', {
-      content: message,
-      client: user?.client_id  // Changed from client_id to client
-    });
+    try {
+      // Get user info to extract client_id
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      const res = await api.post('messages/', {
+        content: message,
+        client: user?.client_id  // Changed from client_id to client
+      });
 
-    setMessages([...messages, res.data]);
-    setMessage('');
-  } catch (error: any) {
-    console.error('Error:', error);
-    console.error('Error response:', error.response);
-    console.error('Error data:', error.response?.data);
-    alert(t('فشل إرسال الرسالة', 'Failed to send message'));
-  }
-};
+      setMessages([...messages, res.data]);
+      setMessage('');
+    } catch (error: any) {
+      // Error handling is done by the API service
+      alert(t('فشل إرسال الرسالة', 'Failed to send message'));
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat(language === 'ar' ? 'ar-EG' : 'en-US', {
