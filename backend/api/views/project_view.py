@@ -11,7 +11,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         try:
-            client = user.client
+            client = Client.objects.get(user=user)
             return Project.objects.filter(client=client)
         except Client.DoesNotExist:
             return Project.objects.none()

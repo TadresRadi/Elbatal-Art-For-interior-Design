@@ -23,7 +23,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         
         # If client, only see their own expenses
         try:
-            client = user.client
+            client = Client.objects.get(user=user)
             return Expense.objects.filter(client=client).order_by('-date')
         except Client.DoesNotExist:
             return Expense.objects.none()
@@ -47,7 +47,7 @@ class ExpenseViewSet(viewsets.ModelViewSet):
         else:
             # If client, use their own client
             try:
-                client = user.client
+                client = Client.objects.get(user=user)
                 serializer.save(client=client)
             except Client.DoesNotExist:
                 from rest_framework import serializers

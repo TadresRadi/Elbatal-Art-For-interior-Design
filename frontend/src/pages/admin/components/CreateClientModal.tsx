@@ -8,7 +8,7 @@ type CreateClientModalProps = {
   onClose: () => void;
   form: CreateClientForm;
   setForm: Dispatch<SetStateAction<CreateClientForm>>;
-  onCreateClient: () => void;
+  onCreateClient: () => Promise<void>;
   t: Translate;
 };
 
@@ -44,6 +44,12 @@ export function CreateClientModal({
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
           <Input
+            type="password"
+            placeholder={t('تأكيد كلمة المرور', 'Confirm Password')}
+            value={form.password_confirm || ''}
+            onChange={(e) => setForm({ ...form, password_confirm: e.target.value })}
+          />
+          <Input
             placeholder={t('الهاتف (اختياري)', 'Phone (Optional)')}
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
@@ -69,7 +75,9 @@ export function CreateClientModal({
             <Button variant="outline" onClick={onClose}>
               {t('إلغاء', 'Cancel')}
             </Button>
-            <Button onClick={onCreateClient} className="bg-[#D4AF37] text-white">
+            <Button onClick={async () => {
+              await onCreateClient();
+            }} className="bg-[#D4AF37] text-white">
               {t('إنشاء', 'Create')}
             </Button>
           </div>

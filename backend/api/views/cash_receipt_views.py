@@ -113,9 +113,9 @@ def get_client_cash_receipts(request):
         # Get client from authenticated user
         user = request.user
         
-        # Try to get client through the reverse relationship
+        # Try to get client through the proper relationship
         try:
-            client = user.client
+            client = Client.objects.get(user=user)
         except Client.DoesNotExist:
             return Response(
                 {'error': 'Client not found for this user'},

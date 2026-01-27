@@ -9,14 +9,14 @@ type ExpenseModalProps = {
   isOpen: boolean;
   onClose: () => void;
   clientId: number | null;
-  onCreateExpense: (data: any) => void;
+  onCreateExpense: (data: any) => Promise<void>;
   t: Translate;
 };
 
 export function ExpenseModal({ isOpen, onClose, clientId, onCreateExpense, t }: ExpenseModalProps) {
   if (!isOpen || !clientId) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget as HTMLFormElement);
     
@@ -30,7 +30,7 @@ export function ExpenseModal({ isOpen, onClose, clientId, onCreateExpense, t }: 
       bill: billFile,
     };
 
-    onCreateExpense(expenseData);
+    await onCreateExpense(expenseData);
     onClose();
     (e.currentTarget as HTMLFormElement).reset();
   };

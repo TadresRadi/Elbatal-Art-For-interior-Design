@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.utils.translation import gettext_lazy as _
 
 
@@ -46,7 +47,7 @@ class Client(models.Model):
         default=0,
         blank=True,
         null=True,
-        validators=[models.MinValueValidator(0)],
+        validators=[MinValueValidator(0)],
         help_text=_("Client budget amount")
     )
 
@@ -110,13 +111,13 @@ class Client(models.Model):
     # Version tracking for expenses and payments discussions
     expenses_version_count = models.IntegerField(
         default=0,
-        validators=[models.MinValueValidator(0)],
+        validators=[MinValueValidator(0)],
         help_text=_("Number of expense versions created")
     )
     
     payments_version_count = models.IntegerField(
         default=0,
-        validators=[models.MinValueValidator(0)],
+        validators=[MinValueValidator(0)],
         help_text=_("Number of payment versions created")
     )
 

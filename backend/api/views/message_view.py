@@ -12,8 +12,12 @@ class MessageViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         # لو المستخدم عميل فرجّع رسائله
-        if hasattr(user, 'client'):
-            return Message.objects.filter(client=user.client).order_by('timestamp')
+        if not user.is_superuser and not user.is_staff:
+            try:
+                client = Client.objects.get(user=user)
+                return Message.objects.filter(client=client).order_by('timestamp')
+            except Client.DoesNotExist:
+                return Message.objects.none()
         # ادمن: ممكن يحدد العميل عبر query param
         client = self.request.query_params.get('client_id')
         if client:
@@ -24,9 +28,12 @@ class MessageViewSet(viewsets.ModelViewSet):
         user = self.request.user
 
         # حدّد العميل والـ sender
-        if hasattr(user, 'client'):
-            client = user.client
-            sender = 'client'
+        if not user.is_superuser and not user.is_staff:
+            try:
+                client = Client.objects.get(user=user)
+                sender = 'client'
+            except Client.DoesNotExist:
+                raise serializers.ValidationError({"client": "Client not found."})
         else:
             # admin: يدعم client or client_id
             client = self.request.data.get('client') or self.request.data.get('client_id')

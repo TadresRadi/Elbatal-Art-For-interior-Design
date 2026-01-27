@@ -17,8 +17,83 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState('home');
 
   useEffect(() => {
+    // Initial check on app load - only redirect from login if explicitly coming from logout
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const hash = window.location.hash.slice(1) || 'home';
+    
+    // Don't auto-redirect from login page - allow users to access login page to logout or switch accounts
+    // Only redirect if user explicitly tries to access dashboard without authentication
+    
+    // Check if user is trying to access dashboard pages without authentication
+    if (hash === 'admin-dashboard' || hash === 'client-dashboard') {
+      if (!user) {
+        // No user found, redirect to login
+        window.location.replace('#login');
+        return;
+      }
+      
+      // Check role-specific access
+      if (hash === 'admin-dashboard' && user.role !== 'admin') {
+        // User is not admin, redirect to appropriate dashboard or login
+        if (user.role === 'client') {
+          window.location.replace('#client-dashboard');
+        } else {
+          window.location.replace('#login');
+        }
+        return;
+      }
+      
+      if (hash === 'client-dashboard' && user.role !== 'client') {
+        // User is not client, redirect to appropriate dashboard or login
+        if (user.role === 'admin') {
+          window.location.replace('#admin-dashboard');
+        } else {
+          window.location.replace('#login');
+        }
+        return;
+      }
+    }
+
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1) || 'home';
+      
+      // Don't auto-redirect from login page - allow users to access login page to logout or switch accounts
+      // Only redirect if user explicitly tries to access dashboard without authentication
+      
+      // Check if user is trying to access dashboard pages without authentication
+      if (hash === 'admin-dashboard' || hash === 'client-dashboard') {
+        const userStr = localStorage.getItem('user');
+        const user = userStr ? JSON.parse(userStr) : null;
+        
+        if (!user) {
+          // No user found, redirect to login
+          window.location.replace('#login');
+          return;
+        }
+        
+        // Check role-specific access
+        if (hash === 'admin-dashboard' && user.role !== 'admin') {
+          // User is not admin, redirect to appropriate dashboard or login
+          if (user.role === 'client') {
+            window.location.replace('#client-dashboard');
+          } else {
+            window.location.replace('#login');
+          }
+          return;
+        }
+        
+        if (hash === 'client-dashboard' && user.role !== 'client') {
+          // User is not client, redirect to appropriate dashboard or login
+          if (user.role === 'admin') {
+            window.location.replace('#admin-dashboard');
+          } else {
+            window.location.replace('#login');
+          }
+          return;
+        }
+      }
+      
       setCurrentPage(hash);
       window.scrollTo(0, 0);
     };

@@ -41,5 +41,4 @@ urlpatterns = [
     path('api/work-items/', get_work_items, name='get-work-items'),
     path('auth/me/', MeView.as_view()),
     path('login/', CustomAuthToken.as_view(), name='custom-login'),
-
 ]

@@ -6,6 +6,7 @@ import { Lock, User, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import LogoUrl from '../assets/logo.jpg';
 import api from '../lib/api';
+import { showSuccessAlert, showErrorAlert, showWarningAlert } from '../utils/simpleAlerts';
 
 const parseJwt = (token: string) => {
   try {
@@ -19,7 +20,6 @@ const parseJwt = (token: string) => {
     );
     return JSON.parse(jsonPayload);
   } catch (e) {
-    console.error('JWT parsing error:', e);
     return null;
   }
 };
@@ -52,20 +52,27 @@ export function LoginPage() {
 
     // 🔹 نحدد الـ dashboard بناءً على role
     if (user.role === 'admin') {
-      window.location.hash = '#admin-dashboard';
+      window.location.replace('#admin-dashboard');
     } else if (user.role === 'client') {
-      window.location.hash = '#client-dashboard';
+      window.location.replace('#client-dashboard');
     } else {
-      alert(t('Role not recognized', 'لم يتم التعرف على الدور'));
+      await showWarningAlert(t('Role not recognized', 'لم يتم التعرف على الدور'));
     }
 
   } catch (error: any) {
-    if (error.response?.status === 401) {
-      alert(t('بيانات الاعتماد غير صحيحة. يرجى التحقق من اسم المستخدم وكلمة المرور.', 'Invalid credentials. Please check your username and password.'));
+    if (error.response?.status === 500) {
+      const errorData = error.response.data;
+      if (errorData?.detail) {
+        await showErrorAlert(`Server Error: ${errorData.detail}`);
+      } else {
+        await showErrorAlert('Server error occurred. Please try again.');
+      }
+    } else if (error.response?.status === 401) {
+      await showErrorAlert(t('بيانات الاعتماد غير صحيحة. يرجى التحقق من اسم المستخدم وكلمة المرور.', 'Invalid credentials. Please check your username and password.'));
     } else if (error.response?.data?.detail) {
-      alert(error.response.data.detail);
+      await showErrorAlert(error.response.data.detail);
     } else {
-      alert(t('فشل تسجيل الدخول: ', 'Login failed: ') + (error.message || t('خطأ غير معروف', 'Unknown error')));
+      await showErrorAlert(t('فشل تسجيل الدخول: ', 'Login failed: ') + (error.message || t('خطأ غير معروف', 'Unknown error')));
     }
   } finally {
     setIsLoading(false);

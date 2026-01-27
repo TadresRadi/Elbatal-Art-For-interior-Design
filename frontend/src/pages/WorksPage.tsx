@@ -38,7 +38,7 @@ export function WorksPage() {
         }));
         setProjects(transformedData);
       } catch (err) {
-        console.error('Error loading work items:', err);
+        // Error handled by API service
         // Fallback to hardcoded data if API fails
         setProjects([
           {

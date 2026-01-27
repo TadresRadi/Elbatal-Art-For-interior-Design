@@ -3,21 +3,21 @@ import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../../../components/ui/tabs';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableFooter,
-} from '../../../components/ui/table';
 import { Card, CardContent } from '../../../components/ui/card';
-import { FileText, Save, X, Edit, Trash2, Printer, Eye, Plus, DollarSign } from 'lucide-react';
-import { CashReceiptModal } from './CashReceiptModal';
-import type { Translate, Expense } from '../types';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../../components/ui/tabs';
+import { FileText, DollarSign, X, Plus, Printer } from 'lucide-react';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell, TableFooter } from '../../../components/ui/table';
+import type { Translate } from '../types';
+import type { Expense } from '../types';
 import api from '../../../lib/api';
+import { 
+  showExpenseSuccessAlert, 
+  showExpenseErrorAlert, 
+  showPaymentSuccessAlert,
+  showPaymentErrorAlert,
+  showDeleteConfirmationDialog,
+  showRequiredFieldAlert
+} from '../../../utils/simpleAlerts';
 
 type ClientExpensesModalProps = {
   isOpen: boolean;
@@ -32,6 +32,7 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const cashReceiptFormRef = useRef<HTMLFormElement>(null);
+  const expenseFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     if (isOpen && client) {
@@ -46,7 +47,7 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
       const res = await api.get(`admin/expenses/?client_id=${client.id}`);
       setExpenses(res.data);
     } catch (err) {
-      console.error('Error loading expenses:', err);
+      // Error handled by API service
     } finally {
       setLoading(false);
     }
@@ -70,20 +71,20 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
         },
       });
       
+      await showExpenseSuccessAlert('created');
       loadExpenses(); // Reload expenses
     } catch (err) {
-      console.error('Error creating expense:', err);
+      await showExpenseErrorAlert('create', err instanceof Error ? err.message : undefined);
     }
   };
 
   const handleCreateCashReceipt = async (cashReceiptData: any) => {
     try {
-      console.log('Creating cash receipt with data:', cashReceiptData);
       const response = await api.post('admin/cash-receipts/', cashReceiptData);
-      console.log('Cash receipt created successfully:', response.data);
+      await showPaymentSuccessAlert('created');
       return response.data;
     } catch (err) {
-      console.error('Error creating cash receipt:', err);
+      await showPaymentErrorAlert('create', err instanceof Error ? err.message : undefined);
       throw err;
     }
   };
@@ -104,19 +105,20 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
       setExpenses(prev => prev.map(e => e.id === id ? res.data : e));
       setEditingId(null);
     } catch (err) {
-      console.error('Error updating expense:', err);
-      alert(t('فشل تحديث المصروف', 'Failed to update expense'));
+      await showExpenseErrorAlert('update', err instanceof Error ? err.message : undefined);
     }
   };
 
   const handleDeleteExpense = async (id: number) => {
-    if (!window.confirm(t('هل أنت متأكد من حذف هذا المصروف؟', 'Are you sure you want to delete this expense?'))) return;
+    const result = await showDeleteConfirmationDialog('expense');
+    if (!result.isConfirmed) return;
+    
     try {
       await api.delete(`admin/expenses/${id}/`);
       setExpenses(prev => prev.filter(e => e.id !== id));
+      await showExpenseSuccessAlert('deleted');
     } catch (err) {
-      console.error('Error deleting expense:', err);
-      alert(t('فشل حذف المصروف', 'Failed to delete expense'));
+      await showExpenseErrorAlert('delete', err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -149,16 +151,12 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 w-full max-w-6xl max-h-[90vh] rounded-lg p-6 overflow-auto">
+      <div className="bg-white dark:bg-gray-800 w-medium max-w-6xl max-h-[90vh] rounded-lg p-4 overflow-auto">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-xl text-[#1A1A1A] dark:text-white">
             {t('إدارة المصروفات', 'Manage Expenses')} - {client.name || client.username}
           </h3>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handlePrint}>
-              <Printer className="h-4 w-4 mr-2" />
-              {t('طباعة', 'Print')}
-            </Button>
             <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
@@ -185,7 +183,7 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
               
               <Card className="bg-white dark:bg-gray-800">
                 <CardContent className="p-6">
-                  <form onSubmit={(e) => {
+                  <form ref={expenseFormRef} onSubmit={async (e) => {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget as HTMLFormElement);
                     
@@ -203,8 +201,8 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
                       expenseData.bill = billFile;
                     }
                     
-                    handleCreateExpense(expenseData);
-                    (e.currentTarget as HTMLFormElement).reset();
+                    await handleCreateExpense(expenseData);
+                    expenseFormRef.current?.reset();
                   }} className="space-y-4">
                     <div>
                       <Label htmlFor="expense-date">{t('التاريخ', 'Date')}</Label>
@@ -248,7 +246,7 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
                         <SelectTrigger className="mt-1">
                           <SelectValue placeholder={t('اختر الحالة', 'Select status')} />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white text-black border shadow-lg min-w-[220px]">
                           <SelectItem value="paid">{t('مدفوع', 'Paid')}</SelectItem>
                           <SelectItem value="pending">{t('معلق', 'Pending')}</SelectItem>
                           <SelectItem value="upcoming">{t('قادم', 'Upcoming')}</SelectItem>
@@ -310,7 +308,7 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
               
               <Card className="bg-white dark:bg-gray-800">
                 <CardContent className="p-6">
-                  <form ref={cashReceiptFormRef} onSubmit={(e) => {
+                  <form ref={cashReceiptFormRef} onSubmit={async (e) => {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget as HTMLFormElement);
                     const cashReceiptData = {
@@ -319,14 +317,8 @@ export function ClientExpensesModal({ isOpen, onClose, client, t }: ClientExpens
                       amount: parseFloat(formData.get('amount') as string),
                     };
                     
-                    console.log('Form data:', Object.fromEntries(formData.entries()));
-                    console.log('Cash receipt data to send:', cashReceiptData);
-                    
-                    handleCreateCashReceipt(cashReceiptData);
-                    (e.currentTarget as HTMLFormElement).reset();
-                    
-                    // Show success message
-                    alert(t('تم إضافة الإيصال النقدي بنجاح', 'Cash receipt added successfully'));
+                    await handleCreateCashReceipt(cashReceiptData);
+                    cashReceiptFormRef.current?.reset();
                   }} className="space-y-4">
                     <div>
                       <Label htmlFor="cash-date">{t('التاريخ', 'Date')}</Label>

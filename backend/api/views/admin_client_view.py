@@ -1,11 +1,11 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from api.permissions import IsAdmin
 
 from api.models import Client
-from api.serializers import ClientCreateSerializer
-from api.serializers.client_serializer import ClientSerializer
+from api.serializers.client_serializer import ClientCreateSerializer, ClientSerializer
 from api.models import client
 from api.models import project
 
@@ -18,30 +18,42 @@ class AdminClientViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return ClientCreateSerializer
         return ClientSerializer
+    
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        client = serializer.save()
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            client = serializer.save()
 
-        project = getattr(client, 'project', None)      
-        project_data = None
-        if project:
-            project_data = {
-                'title': project.title,
-                'total_budget': str(project.total_budget),
-                'client_address': project.client.address,
-                'client_phone': project.client.phone,
-                'start_date': project.start_date,
-                'expected_end_date': project.expected_end_date
-            }
-        return Response({
-            'id': client.id,
-            'username': client.user.username,
-            'phone': client.phone,
-            'address': client.address,
-            'budget': str(client.budget),
-            'project': project_data
-        }, status=201)
+            project = getattr(client, 'project', None)      
+            project_data = None
+            if project:
+                project_data = {
+                    'title': project.title,
+                    'total_budget': str(project.total_budget),
+                    'client_address': project.client.address,
+                    'client_phone': project.client.phone,
+                    'start_date': project.start_date,
+                    'expected_end_date': project.expected_end_date
+                }
+            return Response({
+                'id': client.id,
+                'username': client.user.username,
+                'phone': client.phone,
+                'address': client.address,
+                'budget': str(client.budget),
+                'project': project_data
+            }, status=201)
+        except ValidationError as e:
+            return Response({
+                'error': 'Validation Error',
+                'details': e.detail
+            }, status=400)
+        except Exception as e:
+            return Response({
+                'error': 'Internal Server Error',
+                'message': str(e)
+            }, status=500)
 
     @action(detail=True, methods=['post'], url_path='complete')
     def mark_complete(self, request, pk=None):

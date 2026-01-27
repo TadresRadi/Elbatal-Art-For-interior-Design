@@ -21,6 +21,16 @@ import { ReadOnlyExpenseRow } from '../../../components/ReadOnlyExpenseRow';
 import { ReadOnlyPaymentRow } from '../../../components/ReadOnlyPaymentRow';
 import type { Translate, Expense } from '../types';
 import api from '../../../lib/api';
+import {
+  showExpenseSuccessAlert,
+  showExpenseErrorAlert,
+  showPaymentSuccessAlert,
+  showPaymentErrorAlert,
+  showDiscussionSuccessAlert,
+  showDiscussionErrorAlert,
+  showDeleteConfirmationDialog,
+  showToast
+} from '../../../utils/simpleAlerts';
 
 type ViewExpensesModalProps = {
   isOpen: boolean;
@@ -65,13 +75,6 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
       // Load client data to check discussion status
       const clientRes = await api.get(`admin/clients/${client.id}/`);
       const clientData = clientRes.data;
-      
-      // Debug: Log the client data to see what fields are returned
-      console.log('Client data from API:', clientData);
-      console.log('expenses_discussion_completed:', clientData.expenses_discussion_completed);
-      console.log('payments_discussion_completed:', clientData.payments_discussion_completed);
-      console.log('expenses_discussion_completed_at:', clientData.expenses_discussion_completed_at);
-      console.log('payments_discussion_completed_at:', clientData.payments_discussion_completed_at);
       
       // Set separate discussion states based on client data
       setExpensesDiscussionCompleted(clientData.expenses_discussion_completed || false);
@@ -171,7 +174,7 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
       }
       
     } catch (err) {
-      console.error('Error loading data:', err);
+      // Error handled by API service
     } finally {
       setLoading(false);
     }
@@ -184,7 +187,7 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
       const res = await api.get(`admin/expenses/?client_id=${client.id}`);
       setExpenses(res.data);
     } catch (err) {
-      console.error('Error loading expenses:', err);
+      // Error handled by API service
     } finally {
       setLoading(false);
     }
@@ -197,7 +200,7 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
       const res = await api.get(`admin/payments/?client_id=${client.id}`);
       setPayments(res.data);
     } catch (err) {
-      console.error('Error loading payments:', err);
+      // Error handled by API service
     } finally {
       setLoading(false);
     }
@@ -277,21 +280,22 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
     try {
       const res = await api.patch(`admin/expenses/${id}/`, data);
       setExpenses(expenses.map(exp => exp.id === id ? res.data : exp));
-      alert(t('تم تحديث المصروف بنجاح', 'Expense updated successfully'));
+      await showExpenseSuccessAlert('updated');
     } catch (err) {
-      console.error('Error updating expense:', err);
-      alert(t('فشل تحديث المصروف', 'Failed to update expense'));
+      await showExpenseErrorAlert('update', err instanceof Error ? err.message : undefined);
     }
   };
 
   const handleDeleteExpense = async (id: number) => {
+    const result = await showDeleteConfirmationDialog('expense');
+    if (!result.isConfirmed) return;
+    
     try {
       await api.delete(`admin/expenses/${id}/`);
       setExpenses(expenses.filter(exp => exp.id !== id));
-      alert(t('تم حذف المصروف بنجاح', 'Expense deleted successfully'));
+      await showExpenseSuccessAlert('deleted');
     } catch (err) {
-      console.error('Error deleting expense:', err);
-      alert(t('فشل حذف المصروف', 'Failed to delete expense'));
+      await showExpenseErrorAlert('delete', err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -299,34 +303,35 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
     try {
       const res = await api.patch(`admin/payments/${id}/`, data);
       setPayments(payments.map(pay => pay.id === id ? res.data : pay));
-      alert(t('تم تحديث الدفعة بنجاح', 'Payment updated successfully'));
+      await showPaymentSuccessAlert('updated');
     } catch (err) {
-      console.error('Error updating payment:', err);
-      alert(t('فشل تحديث الدفعة', 'Failed to update payment'));
+      await showPaymentErrorAlert('update', err instanceof Error ? err.message : undefined);
     }
   };
 
   const handleDeletePayment = async (id: number) => {
+    const result = await showDeleteConfirmationDialog('payment');
+    if (!result.isConfirmed) return;
+    
     try {
       await api.delete(`admin/payments/${id}/`);
       setPayments(payments.filter(pay => pay.id !== id));
-      alert(t('تم حذف الدفعة بنجاح', 'Payment deleted successfully'));
+      await showPaymentSuccessAlert('deleted');
     } catch (err) {
-      console.error('Error deleting payment:', err);
-      alert(t('فشل حذف الدفعة', 'Failed to delete payment'));
+      await showPaymentErrorAlert('delete', err instanceof Error ? err.message : undefined);
     }
   };
 
   const handleAddExpense = () => {
     // This would open a modal to add a new expense
-    // For now, we'll just show an alert
-    alert(t('إضافة مصروف جديد', 'Add new expense'));
+    // For now, we'll just show a toast
+    showToast(t('إضافة مصروف جديد', 'Add new expense'), 'info');
   };
 
   const handleAddPayment = () => {
     // This would open a modal to add a new payment
-    // For now, we'll just show an alert
-    alert(t('إضافة دفعة جديدة', 'Add new payment'));
+    // For now, we'll just show a toast
+    showToast(t('إضافة دفعة جديدة', 'Add new payment'), 'info');
   };
 
   const handleCompleteDiscussion = async (type: 'expenses' | 'payments') => {
@@ -375,14 +380,9 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
       // Reload data to get the updated versions
       await loadData();
       
-      const successMessage = type === 'expenses'
-        ? t('تم إكمال نقاش المصروفات مع العميل بنجاح', 'Expenses discussion completed with client successfully')
-        : t('تم إكمال نقاش المدفوعات مع العميل بنجاح', 'Payments discussion completed with client successfully');
-      
-      alert(successMessage);
+      await showDiscussionSuccessAlert(type);
     } catch (err) {
-      console.error('Error completing discussion:', err);
-      alert(t('فشل إكمال النقاش', 'Failed to complete discussion'));
+      await showDiscussionErrorAlert(type, err instanceof Error ? err.message : undefined);
     }
   };
 

@@ -1,5 +1,5 @@
 from rest_framework import viewsets
-from api.models import ProjectProgress
+from api.models import ProjectProgress, Client
 from api.serializers import ProjectProgressSerializer
 from api.permissions import IsClient
 
@@ -8,5 +8,8 @@ class ProjectProgressViewSet(viewsets.ModelViewSet):
     permission_classes = [IsClient]
 
     def get_queryset(self):
-        client = self.request.user.client
-        return ProjectProgress.objects.filter(project__client=client)
+        try:
+            client = Client.objects.get(user=self.request.user)
+            return ProjectProgress.objects.filter(project__client=client)
+        except Client.DoesNotExist:
+            return ProjectProgress.objects.none()

@@ -96,7 +96,7 @@ class ClientCreateSerializer(serializers.ModelSerializer):
     
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
-    email = serializers.EmailField(required=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
     username = serializers.CharField(required=True, min_length=3)
     first_name = serializers.CharField(required=False, allow_blank=True, max_length=30)
     last_name = serializers.CharField(required=False, allow_blank=True, max_length=30)
@@ -111,13 +111,17 @@ class ClientCreateSerializer(serializers.ModelSerializer):
     def validate_username(self, value):
         """Validate username uniqueness."""
         if User.objects.filter(username=value).exists():
-            raise ValidationError("A user with that username already exists.")
+            raise ValidationError({
+                'username': ['A user with this username already exists. Please choose a different username.']
+            })
         return value
 
     def validate_email(self, value):
-        """Validate email uniqueness."""
-        if User.objects.filter(email=value).exists():
-            raise ValidationError("A user with that email already exists.")
+        """Validate email uniqueness if provided."""
+        if value and User.objects.filter(email=value).exists():
+            raise ValidationError({
+                'email': ['A user with this email already exists. Please use a different email address.']
+            })
         return value
 
     def validate(self, attrs):
@@ -126,7 +130,9 @@ class ClientCreateSerializer(serializers.ModelSerializer):
         password_confirm = attrs.pop('password_confirm')
         
         if password != password_confirm:
-            raise ValidationError("Passwords don't match.")
+            raise ValidationError({
+                'password_confirm': ['Passwords do not match.']
+            })
         
         return attrs
 
@@ -135,10 +141,10 @@ class ClientCreateSerializer(serializers.ModelSerializer):
         # Extract user data
         user_data = {
             'username': validated_data['username'],
-            'email': validated_data['email'],
             'password': validated_data['password'],
             'first_name': validated_data.get('first_name', ''),
             'last_name': validated_data.get('last_name', ''),
+            'email': validated_data.get('email', f"{validated_data['username']}@example.com")
         }
         
         # Create user

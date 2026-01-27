@@ -32,6 +32,99 @@ import api from '../lib/api';
 
 export function ClientDashboard() {
   const { t, language, setLanguage, theme, setTheme } = useApp();
+  
+  // IMMEDIATE AUTHENTICATION CHECK - Runs before any rendering
+  // Only check if we're not on the login page
+  if (window.location.hash !== '#login') {
+    const accessToken = localStorage.getItem('accessToken');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    
+    if (!accessToken || !user || user.role !== 'client') {
+      // Redirect immediately without rendering anything
+      window.location.replace('#login');
+      return null;
+    }
+  }
+  
+  // Check if user is authenticated and is client
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    
+    if (!user) {
+      window.location.replace('#login');
+      return;
+    }
+    
+    if (user.role !== 'client') {
+      window.location.replace('#login');
+      return;
+    }
+  }, []);
+
+  // Additional check for browser history navigation
+  useEffect(() => {
+    const checkAuth = () => {
+      const accessToken = localStorage.getItem('accessToken');
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      // If no tokens or user, redirect to login immediately
+      if (!accessToken || !user || user.role !== 'client') {
+        window.location.replace('#login');
+        return;
+      }
+    };
+
+    // Check on focus (when user comes back to the tab)
+    const handleFocus = () => {
+      checkAuth();
+    };
+
+    // Check on visibility change (when user switches tabs)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkAuth();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      // Call backend logout endpoint if available
+      await api.post('logout/');
+    } catch (err) {
+      // Continue with logout even if backend call fails
+      console.error('Logout API call failed:', err);
+    } finally {
+      // Clear all authentication data
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      localStorage.clear();
+      
+      // Clear session storage as well
+      sessionStorage.clear();
+      
+      // Clear all cookies
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+      
+      // Force hard reload and redirect to login
+      window.location.href = window.location.origin + '/#login';
+    }
+  };
+  
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<any[]>([]);
   const [projectData, setProjectData] = useState<any>(null);
@@ -169,10 +262,42 @@ export function ClientDashboard() {
     return sum + amount;
   }, 0);
 
+  const totalPostDiscussionPayments = postDiscussionPayments.reduce((sum: any, payment: any) => {
+    const amount = parseFloat(String(payment.amount)) || 0;
+    return sum + amount;
+  }, 0);
+
+  // Calculate total payments from all payment versions
+  const totalPaymentVersions = paymentVersions.reduce((sum: any, version: any) => {
+    const versionTotal = version.payments_data?.reduce((versionSum: number, pay: any) => {
+      return versionSum + (parseFloat(String(pay.amount)) || 0);
+    }, 0) || 0;
+    return sum + versionTotal;
+  }, 0);
+
+  // Total paid includes all payments from all tables
+  const totalPaidAll = totalPaid + totalPostDiscussionPayments + totalPaymentVersions;
+
   const totalExpenses = expenses.reduce((sum: any, expense: any) => {
     const amount = parseFloat(String(expense.amount)) || 0;
     return sum + amount;
   }, 0);
+
+  const totalPostDiscussionExpenses = postDiscussionExpenses.reduce((sum: any, expense: any) => {
+    const amount = parseFloat(String(expense.amount)) || 0;
+    return sum + amount;
+  }, 0);
+
+  // Calculate total expenses from all expense versions
+  const totalExpenseVersions = expenseVersions.reduce((sum: any, version: any) => {
+    const versionTotal = version.expenses_data?.reduce((versionSum: number, exp: any) => {
+      return versionSum + (parseFloat(String(exp.amount)) || 0);
+    }, 0) || 0;
+    return sum + versionTotal;
+  }, 0);
+
+  // Total cost includes all expenses from all tables
+  const totalCost = totalExpenses + totalPostDiscussionExpenses + totalExpenseVersions;
 
   const handleSendMessage = async () => {
     if (!message.trim()) return;
@@ -276,7 +401,7 @@ export function ClientDashboard() {
 
                 <Button
                   variant="outline"
-                  onClick={() => (window.location.hash = '#home')}
+                  onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-5 w-5" />
                   {t('خروج', 'Logout')}
@@ -360,7 +485,7 @@ export function ClientDashboard() {
                     {t('إجمالي التكلفة', 'Total Cost')}
                   </p>
                   <h3 className="text-2xl text-[#1A1A1A] dark:text-white">
-                    {formatCurrency(totalExpenses)}
+                    {formatCurrency(totalCost)}
                   </h3>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
@@ -378,7 +503,7 @@ export function ClientDashboard() {
                     {t('المدفوع', 'Paid')}
                   </p>
                   <h3 className="text-2xl text-[#1A1A1A] dark:text-white">
-                    {formatCurrency(totalPaid)}
+                    {formatCurrency(totalPaidAll)}
                   </h3>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
@@ -396,7 +521,7 @@ export function ClientDashboard() {
                     {t('المتبقي', 'Remaining')}
                   </p>
                   <h3 className="text-2xl text-[#1A1A1A] dark:text-white">
-                    {formatCurrency(totalPaid - totalExpenses)}
+                    {formatCurrency(totalPaidAll - totalCost)}
                   </h3>
                 </div>
                 <div className="w-12 h-12 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
@@ -424,11 +549,9 @@ export function ClientDashboard() {
                           onClick={() => handleToggleVersion(versionKey)}
                         >
                           {t('المصروفات', 'Expenses')} {version.version_number}
-                          {isVersionCollapsed && (
-                            <span className="text-sm text-gray-500 ml-2">
-                              ({t('مطوي', 'Collapsed')})
-                            </span>
-                          )}
+                          <span className="text-sm text-green-600 ml-2">
+                            ({t('النقاش مكتمل', 'Discussion Completed')})
+                          </span>
                         </h5>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -519,16 +642,11 @@ export function ClientDashboard() {
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h3 className={`text-xl ${expensesDiscussionCompleted ? 'text-green-600' : 'text-[#1A1A1A]'} dark:text-white`}>
+                  <h3 className={`text-xl ${expensesDiscussionCompleted ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'} dark:text-white`}>
                     {expensesDiscussionCompleted 
-                      ? t('مصروفات جديدة بعد النقاش', 'New Expenses After Discussion')
+                      ? t('مصروفات جديدة', 'New Expenses')
                       : t('جدول المصروفات', 'Expenses Table')
                     }
-                    {expensesDiscussionCompleted && (
-                      <span className="text-sm text-green-600 ml-2">
-                        ({t('تم النقاش', 'Discussion Completed')})
-                      </span>
-                    )}
                   </h3>
                 </div>
               </div>
@@ -581,7 +699,7 @@ export function ClientDashboard() {
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-gray-500 py-8">
                           {expensesDiscussionCompleted 
-                            ? t('لا توجد مصروفات جديدة بعد النقاش', 'No new expenses after discussion')
+                            ? t('لا توجد مصروفات جديدة', 'No new expenses')
                             : t('لا توجد مصروفات مسجلة', 'No expenses recorded')
                           }
                         </TableCell>
@@ -622,11 +740,9 @@ export function ClientDashboard() {
                           onClick={() => handleToggleVersion(versionKey)}
                         >
                           {t('المدفوعات', 'Payments')} {version.version_number}
-                          {isVersionCollapsed && (
-                            <span className="text-sm text-gray-500 ml-2">
-                              ({t('مطوي', 'Collapsed')})
-                            </span>
-                          )}
+                          <span className="text-sm text-green-600 ml-2">
+                            ({t('النقاش مكتمل', 'Discussion Completed')})
+                          </span>
                         </h5>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -690,16 +806,11 @@ export function ClientDashboard() {
           <Card className="bg-white dark:bg-gray-800">
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className={`text-xl ${paymentsDiscussionCompleted ? 'text-green-600' : 'text-[#1A1A1A]'} dark:text-white`}>
+                <h3 className={`text-xl ${paymentsDiscussionCompleted ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]'} dark:text-white`}>
                   {paymentsDiscussionCompleted 
-                    ? t('مدفوعات جديدة بعد النقاش', 'New Payments After Discussion')
+                    ? t('مدفوعات جديدة', 'New Payments')
                     : t('جدول المدفوعات', 'Payments Table')
                   }
-                  {paymentsDiscussionCompleted && (
-                    <span className="text-sm text-green-600 ml-2">
-                      ({t('تم النقاش', 'Discussion Completed')})
-                    </span>
-                  )}
                 </h3>
               </div>
               <div className="overflow-x-auto">
@@ -725,7 +836,7 @@ export function ClientDashboard() {
                       <TableRow>
                         <TableCell colSpan={3} className="text-center text-gray-500 py-8">
                           {paymentsDiscussionCompleted 
-                            ? t('لا توجد مدفوعات جديدة بعد النقاش', 'No new payments after discussion')
+                            ? t('لا توجد مدفوعات جديدة', 'No new payments')
                             : t('لا توجد مدفوعات مسجلة', 'No payments recorded')
                           }
                         </TableCell>

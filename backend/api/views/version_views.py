@@ -173,9 +173,11 @@ class BaseClientVersionViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         """Only return versions for the authenticated client."""
         user = self.request.user
-        if hasattr(user, 'client') and user.client:
-            return self.version_model.objects.filter(client=user.client)
-        return self.version_model.objects.none()
+        try:
+            client = Client.objects.get(user=user)
+            return self.version_model.objects.filter(client=client)
+        except Client.DoesNotExist:
+            return self.version_model.objects.none()
 
 
 class ClientExpenseVersionViewSet(BaseClientVersionViewSet):

@@ -17,9 +17,90 @@ import { ProgressModal } from './admin/components/ProgressModal';
 import { WorkItemsTable } from '../components/WorkItemsTable';
 import { CreateWorkItemModal } from '../components/CreateWorkItemModal';
 import type { Client, CreateClientForm } from './admin/types';
+import {
+  showClientSuccessAlert,
+  showClientErrorAlert,
+  showExpenseSuccessAlert,
+  showExpenseErrorAlert,
+  showWorkItemSuccessAlert,
+  showWorkItemErrorAlert,
+  showProgressSuccessAlert,
+  showProgressErrorAlert,
+  showMessageSuccessAlert,
+  showMessageErrorAlert,
+  showDeleteConfirmationDialog,
+  showFormValidationErrorAlert,
+  showRequiredFieldAlert
+} from '../utils/simpleAlerts';
 
 export function AdminDashboard() {
   const { t, language, setLanguage, theme, setTheme } = useApp();
+  
+  // IMMEDIATE AUTHENTICATION CHECK - Runs before any rendering
+  // Only check if we're not on the login page
+  if (window.location.hash !== '#login') {
+    const accessToken = localStorage.getItem('accessToken');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    
+    if (!accessToken || !user || user.role !== 'admin') {
+      // Redirect immediately without rendering anything
+      window.location.replace('#login');
+      return null;
+    }
+  }
+  
+  // Check if user is authenticated and is admin
+  useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    
+    if (!user) {
+      window.location.replace('#login');
+      return;
+    }
+    
+    if (user.role !== 'admin') {
+      window.location.replace('#login');
+      return;
+    }
+  }, []);
+
+  // Additional check for browser history navigation
+  useEffect(() => {
+    const checkAuth = () => {
+      const accessToken = localStorage.getItem('accessToken');
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      // If no tokens or user, redirect to login immediately
+      if (!accessToken || !user || user.role !== 'admin') {
+        window.location.replace('#login');
+        return;
+      }
+    };
+
+    // Check on focus (when user comes back to the tab)
+    const handleFocus = () => {
+      checkAuth();
+    };
+
+    // Check on visibility change (when user switches tabs)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkAuth();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+  
   const [tab, setTab] = useState('overview');
 
   const [clients, setClients] = useState<Client[]>([]);
@@ -39,7 +120,9 @@ export function AdminDashboard() {
   const [form, setForm] = useState<CreateClientForm>({
     username: '',
     password: '',
+    password_confirm: '',
     project_title: '',
+    email: '',
     phone: '',
     address: '',
     start_date: '',
@@ -78,8 +161,7 @@ export function AdminDashboard() {
       setClients(clients.map(cl => cl.id === clientId ? { ...cl, progress } : cl));
       alert(t('تم تحديث التقدم بنجاح', 'Progress updated successfully'));
     } catch (err) {
-      console.error('Error updating progress:', err);
-      alert(t('فشل تحديث التقدم', 'Failed to update progress'));
+      await showProgressErrorAlert(err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -89,7 +171,7 @@ export function AdminDashboard() {
       setClients(clients.map(c => c.id === id ? { ...c, status: 'completed' } : c));
       alert(t('تم إكمال العميل بنجاح', 'Client completed successfully'));
     } catch (err) {
-      console.error('Error completing client:', err);
+      await showClientErrorAlert('complete', err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -99,18 +181,46 @@ export function AdminDashboard() {
       setClients(clients.map(c => c.id === id ? { ...c, status: 'active' } : c));
       alert(t('تم استرجاع العميل بنجاح', 'Client retrieved successfully'));
     } catch (err) {
-      console.error('Error retrieving client:', err);
+      await showClientErrorAlert('retrieve', err instanceof Error ? err.message : undefined);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    window.location.href = '/#login';
+  const handleLogout = async () => {
+    try {
+      // Call backend logout endpoint if available
+      await api.post('logout/');
+    } catch (err) {
+      // Continue with logout even if backend call fails
+      console.error('Logout API call failed:', err);
+    } finally {
+      // Clear all authentication data
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      localStorage.clear();
+      
+      // Clear session storage as well
+      sessionStorage.clear();
+      
+      // Clear all cookies
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+      
+      // Force hard reload and redirect to login
+      window.location.href = window.location.origin + '/#login';
+    }
   };
 
   const handleSendMessage = async () => {
-    if (!modalChat) return alert('العميل غير محدد');
-    if (!message.trim() && !selectedFile) return alert('Please enter a message or select a file');
+    if (!modalChat) {
+      await showRequiredFieldAlert('client');
+      return;
+    }
+    if (!message.trim() && !selectedFile) {
+      await showRequiredFieldAlert('message or file');
+      return;
+    }
 
     try {
       const formData = new FormData();
@@ -135,14 +245,13 @@ export function AdminDashboard() {
         const res = await api.get(`messages/?client_id=${modalChat.id}`);
         setModalChat(prev => prev ? { ...prev, messages: res.data } : null);
       } catch (err) {
-        console.error('Error refreshing messages:', err);
+        // Error handled by API service
       }
     } catch (err: any) {
-      console.error('Error sending message:', err);
       if (err.response?.data) {
-        alert('فشل إرسال الرسالة: ' + JSON.stringify(err.response.data));
+        await showMessageErrorAlert(JSON.stringify(err.response.data));
       } else {
-        alert('حدث خطأ أثناء إرسال الرسالة: ' + err.message);
+        await showMessageErrorAlert(err.message);
       }
     }
   };
@@ -159,8 +268,7 @@ export function AdminDashboard() {
       const res = await api.get(`messages/?client_id=${modalChat.id}`);
       setModalChat(prev => prev ? { ...prev, messages: res.data } : null);
     } catch (err: any) {
-      console.error('Error creating test message:', err);
-      alert('Failed to create test message');
+      await showMessageErrorAlert('Failed to create test message');
     }
   };
 
@@ -181,24 +289,26 @@ export function AdminDashboard() {
           'Content-Type': 'multipart/form-data',
         },
       });
-      alert(t('تم إضافة المصروف بنجاح', 'Expense added successfully'));
+      await showExpenseSuccessAlert('created');
     } catch (err: any) {
-      console.error('Error creating expense:', err);
       if (err.response && err.response.data) {
-        alert(t('فشل إضافة المصروف: ', 'Failed to add expense: ') + JSON.stringify(err.response.data));
+        await showExpenseErrorAlert('create', JSON.stringify(err.response.data));
       } else {
-        alert(t('فشل إضافة المصروف', 'Failed to add expense'));
+        await showExpenseErrorAlert('create');
       }
     }
   };
 
   const deleteClient = async (id: number) => {
-    if (!window.confirm(t('هل أنت متأكد من حذف العميل', 'Delete client'))) return;
+    const result = await showDeleteConfirmationDialog('client');
+    if (!result.isConfirmed) return;
+    
     try {
       await api.delete(`admin/clients/${id}/`);
       setClients(clients.filter(c => c.id !== id));
+      await showClientSuccessAlert('deleted');
     } catch (err) {
-      console.error('Error deleting client:', err);
+      await showClientErrorAlert('delete', err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -237,7 +347,7 @@ export function AdminDashboard() {
           },
         });
         setWorkItems(workItems.map(wi => wi.id === item.id ? res.data : wi));
-        alert(t('تم تحديث عنصر العمل بنجاح', 'Work item updated successfully'));
+        await showWorkItemSuccessAlert('updated');
       } else {
         // Create new work item
         res = await api.post('admin/work-items/', formData, {
@@ -246,28 +356,30 @@ export function AdminDashboard() {
           },
         });
         setWorkItems([res.data, ...workItems]);
-        alert(t('تم إضافة عنصر العمل بنجاح', 'Work item created successfully'));
+        await showWorkItemSuccessAlert('created');
       }
 
       setModalWorkItem(null);
       setModalCreateWorkItem(false);
     } catch (err: any) {
-      console.error('Error saving work item:', err);
       if (err.response && err.response.data) {
-        alert(t('فشل حفظ عنصر العمل: ', 'Failed to save work item: ') + JSON.stringify(err.response.data));
+        await showWorkItemErrorAlert(item.id ? 'update' : 'create', JSON.stringify(err.response.data));
       } else {
-        alert(t('فشل حفظ عنصر العمل', 'Failed to save work item'));
+        await showWorkItemErrorAlert(item.id ? 'update' : 'create');
       }
     }
   };
 
   const handleDeleteWorkItem = async (id: number) => {
-    if (!window.confirm(t('هل أنت متأكد من حذف هذا العنصر', 'Delete this item'))) return;
+    const result = await showDeleteConfirmationDialog('work item');
+    if (!result.isConfirmed) return;
+    
     try {
       await api.delete(`admin/work-items/${id}/`);
       setWorkItems(workItems.filter(wi => wi.id !== id));
+      await showWorkItemSuccessAlert('deleted');
     } catch (err) {
-      console.error('Error deleting work item:', err);
+      await showWorkItemErrorAlert('delete', err instanceof Error ? err.message : undefined);
     }
   };
 
@@ -277,7 +389,7 @@ export function AdminDashboard() {
         const res = await api.get('admin/clients/');
         setClients(res.data);
       } catch (err) {
-        console.error('Error loading clients:', err);
+        // Error handled by API service
       }
     };
     loadClients();
@@ -289,7 +401,7 @@ export function AdminDashboard() {
         const res = await api.get('admin/payments/');
         setCashReceipts(res.data);
       } catch (err) {
-        console.error('Error loading cash receipts:', err);
+        // Error handled by API service
       }
     };
     loadCashReceipts();
@@ -307,7 +419,7 @@ export function AdminDashboard() {
         }));
         setWorkItems(transformedData);
       } catch (err) {
-        console.error('Error loading work items:', err);
+        // Error handled by API service
       }
     };
     loadWorkItems();
@@ -322,7 +434,7 @@ export function AdminDashboard() {
         const messages = Array.isArray(res.data) ? res.data : [];
         setModalChat(prev => prev ? { ...prev, messages: messages } : null);
       } catch (err) {
-        console.error('Error loading chat:', err);
+        // Error handled by API service
       }
     };
     loadChat();
@@ -389,30 +501,79 @@ export function AdminDashboard() {
   };
 
   const createClient = async () => {
-    if (!form.username.trim() || !form.password.trim() || !form.project_title.trim()) {
-      return alert(t('يرجى ملء جميع الحقول المطلوبة', 'Please fill all required fields'));
+    // Ensure form values are strings and not objects
+    const cleanForm = {
+      username: typeof form.username === 'string' ? form.username : String(form.username || ''),
+      password: typeof form.password === 'string' ? form.password : String(form.password || ''),
+      password_confirm: typeof form.password_confirm === 'string' ? form.password_confirm : String(form.password_confirm || ''),
+      project_title: typeof form.project_title === 'string' ? form.project_title : String(form.project_title || ''),
+      email: typeof form.email === 'string' ? form.email : String(form.email || ''),
+      phone: typeof form.phone === 'string' ? form.phone : String(form.phone || ''),
+      address: typeof form.address === 'string' ? form.address : String(form.address || ''),
+      start_date: typeof form.start_date === 'string' ? form.start_date : String(form.start_date || ''),
+      expected_end_date: typeof form.expected_end_date === 'string' ? form.expected_end_date : String(form.expected_end_date || '')
+    };
+    
+    const missingFields = [];
+    if (!cleanForm.username.trim()) missingFields.push('username');
+    if (!cleanForm.password.trim()) missingFields.push('password');
+    if (!cleanForm.password_confirm.trim()) missingFields.push('password confirmation');
+    if (!cleanForm.project_title.trim()) missingFields.push('project title');
+    
+    if (missingFields.length > 0) {
+      await showFormValidationErrorAlert(missingFields);
+      return;
     }
+    
+    if (cleanForm.password !== cleanForm.password_confirm) {
+      await showFormValidationErrorAlert(['Passwords do not match.']);
+      return;
+    }
+    
     try {
-      const res = await api.post('admin/clients/', {
-        username: form.username,
-        password: form.password,
-        project_title: form.project_title,
-        phone: form.phone || '',
-        address: form.address || '',
-        start_date: form.start_date,
-        expected_end_date: form.expected_end_date
-      });
+      const res = await api.post('admin/clients/', cleanForm);
       setClients([res.data, ...clients]);
-      setForm({ username: '', password: '', project_title: '', phone: '', address: '', start_date: '', expected_end_date: '' });
+      setForm({ username: '', password: '', password_confirm: '', project_title: '', email: '', phone: '', address: '', start_date: '', expected_end_date: '' });
       setModalCreate(false);
       setTab('clients');
-      alert(t('تم إنشاء العميل بنجاح', 'Client created successfully'));
+      await showClientSuccessAlert('created');
     } catch (err: any) {
-      console.error('Error creating client:', err);
-      if (err.response && err.response.data) {
-        alert(t('فشل إنشاء العميل: ', 'Failed to create client: ') + JSON.stringify(err.response.data));
+      if (err.response?.status === 400 && err.response?.data?.details) {
+        // Handle validation errors with field-specific messages
+        const errorDetails = err.response.data.details;
+        let errorMessage = '';
+        
+        if (typeof errorDetails === 'object') {
+          // Extract field-specific error messages
+          const errorMessages = [];
+          for (const [field, fieldData] of Object.entries(errorDetails)) {
+            if (typeof fieldData === 'object' && fieldData !== null) {
+              // Handle nested structure like {"username": {"username": ["error message"]}}
+              for (const [subField, messages] of Object.entries(fieldData)) {
+                if (Array.isArray(messages)) {
+                  errorMessages.push(`${subField}: ${messages.join(', ')}`);
+                } else {
+                  errorMessages.push(`${subField}: ${messages}`);
+                }
+              }
+            } else if (Array.isArray(fieldData)) {
+              errorMessages.push(`${field}: ${fieldData.join(', ')}`);
+            } else {
+              errorMessages.push(`${field}: ${fieldData}`);
+            }
+          }
+          errorMessage = errorMessages.join('\n');
+        } else {
+          errorMessage = err.response.data.message || 'Validation failed';
+        }
+        
+        await showClientErrorAlert('create', errorMessage);
+      } else if (err.response?.status === 400 && err.response?.data?.error) {
+        // Handle simple error messages
+        await showClientErrorAlert('create', err.response.data.error);
       } else {
-        alert(t('فشل إنشاء العميل', 'Failed to create client'));
+        // Handle other errors
+        await showClientErrorAlert('create', err.response?.data?.message || err.message || 'Unknown error occurred');
       }
     }
   };
@@ -422,7 +583,7 @@ export function AdminDashboard() {
       const res = await api.patch(`admin/clients/${id}/`, updates);
       setClients(clients.map(c => c.id === id ? res.data : c));
     } catch (err) {
-      console.error('Error updating client:', err);
+      await showClientErrorAlert('update', err instanceof Error ? err.message : undefined);
     }
   };
 
