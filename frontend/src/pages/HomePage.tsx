@@ -206,9 +206,9 @@ export function HomePage() {
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-4xl text-[#D4AF37] mb-2">450+</div>
+                <div className="text-4xl text-[#D4AF37] mb-2">50+</div>
                 <div className="text-gray-600 dark:text-gray-400">
-                  {t('عميل راض', 'Satisfied Clients')}
+                  {t('موظف محترف', 'Professional Employees')}
                 </div>
               </div>
             </div>

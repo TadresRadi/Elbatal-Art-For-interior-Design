@@ -143,112 +143,112 @@ export function ClientDashboard() {
   const [paymentsDiscussionCompletedAt, setPaymentsDiscussionCompletedAt] = useState<string | null>(null);
   const [collapsedVersions, setCollapsedVersions] = useState<{[key: string]: boolean}>({});
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const dashboardRes = await api.get('client/dashboard/');
-        
-        if (dashboardRes.data.project) {
-          setProjectData(dashboardRes.data.project);
-          // Set separate discussion completed states
-          setExpensesDiscussionCompleted(dashboardRes.data.project.expenses_discussion_completed || false);
-          setPaymentsDiscussionCompleted(dashboardRes.data.project.payments_discussion_completed || false);
-          setExpensesDiscussionCompletedAt(dashboardRes.data.project.expenses_discussion_completed_at || null);
-          setPaymentsDiscussionCompletedAt(dashboardRes.data.project.payments_discussion_completed_at || null);
-        }
-        
-        // Get user info for client_id
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        const clientId = user.client_id;
-        
-        if (clientId) {
-          // Load expense versions using client endpoints
-          try {
-            const expenseVersionsRes = await api.get(`client/expense-versions/`);
-            const expenseVersionsData = expenseVersionsRes.data;
-            setExpenseVersions(expenseVersionsData);
-            
-            // Load payment versions using client endpoints
-            const paymentVersionsRes = await api.get(`client/payment-versions/`);
-            const paymentVersionsData = paymentVersionsRes.data;
-            setPaymentVersions(paymentVersionsData);
-            
-            // Fetch current expenses (all expenses for the current/new table)
-            const expensesRes = await api.get('expenses/');
-            const allExpenses = expensesRes.data;
-            
-            // Fetch current payments (cash receipts)
-            const paymentsRes = await api.get('client/payments/');
-            const allPayments = paymentsRes.data;
-            
-            // For client side: 
-            // - If discussion completed, show versioned tables (old data) + current table (new data ONLY)
-            // - If not completed, show current table (all data)
-            
-            if (dashboardRes.data.project?.expenses_discussion_completed) {
-              // Get the latest expense version to determine what's "old"
-              const latestExpenseVersion = expenseVersionsData[expenseVersionsData.length - 1];
-              if (latestExpenseVersion) {
-                // The versioned data is already stored in the version, so current table should only show new items
-                // Filter expenses created AFTER the latest discussion completion
-                const discussionDate = new Date(latestExpenseVersion.discussion_completed_at);
-                const newExpenses = allExpenses.filter((exp: any) => {
-                  const expDate = new Date(exp.created_at);
-                  return expDate > discussionDate; // Use > instead of >= to be more precise
-                });
-                
-                setPostDiscussionExpenses(newExpenses);
-                setExpenses([]); // Clear old expenses since they're in versions
-              } else {
-                setExpenses(allExpenses);
-                setPostDiscussionExpenses([]);
-              }
+  const fetchData = async () => {
+    try {
+      const dashboardRes = await api.get('client/dashboard/');
+      
+      if (dashboardRes.data) {
+        setProjectData(dashboardRes.data.project);
+        // Set separate discussion completed states
+        setExpensesDiscussionCompleted(dashboardRes.data.project?.expenses_discussion_completed || false);
+        setPaymentsDiscussionCompleted(dashboardRes.data.project?.payments_discussion_completed || false);
+        setExpensesDiscussionCompletedAt(dashboardRes.data.project?.expenses_discussion_completed_at || null);
+        setPaymentsDiscussionCompletedAt(dashboardRes.data.project?.payments_discussion_completed_at || null);
+      }
+      
+      // Get user info for client_id
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const clientId = user.client_id;
+      
+      if (clientId) {
+        // Load expense versions using client endpoints
+        try {
+          const expenseVersionsRes = await api.get(`client/expense-versions/`);
+          const expenseVersionsData = expenseVersionsRes.data;
+          setExpenseVersions(expenseVersionsData);
+          
+          // Load payment versions using client endpoints
+          const paymentVersionsRes = await api.get(`client/payment-versions/`);
+          const paymentVersionsData = paymentVersionsRes.data;
+          setPaymentVersions(paymentVersionsData);
+          
+          // Fetch current expenses (all expenses for the current/new table)
+          const expensesRes = await api.get('expenses/');
+          const allExpenses = expensesRes.data;
+          
+          // Fetch current payments (cash receipts)
+          const paymentsRes = await api.get('client/payments/');
+          const allPayments = paymentsRes.data;
+          
+          // For client side: 
+          // - If discussion completed, show versioned tables (old data) + current table (new data ONLY)
+          // - If not completed, show current table (all data)
+          
+          if (dashboardRes.data.project?.expenses_discussion_completed) {
+            // Get the latest expense version to determine what's "old"
+            const latestExpenseVersion = expenseVersionsData[expenseVersionsData.length - 1];
+            if (latestExpenseVersion) {
+              // The versioned data is already stored in the version, so current table should only show new items
+              // Filter expenses created AFTER the latest discussion completion
+              const discussionDate = new Date(latestExpenseVersion.discussion_completed_at);
+              const newExpenses = allExpenses.filter((exp: any) => {
+                const expDate = new Date(exp.created_at);
+                return expDate > discussionDate; // Use > instead of >= to be more precise
+              });
+              
+              setPostDiscussionExpenses(newExpenses);
+              setExpenses([]); // Clear old expenses since they're in versions
             } else {
               setExpenses(allExpenses);
               setPostDiscussionExpenses([]);
             }
-            
-            if (dashboardRes.data.project?.payments_discussion_completed) {
-              // Get the latest payment version to determine what's "old"
-              const latestPaymentVersion = paymentVersionsData[paymentVersionsData.length - 1];
-              if (latestPaymentVersion) {
-                // The versioned data is already stored in the version, so current table should only show new items
-                // Filter payments created AFTER the latest discussion completion
-                const discussionDate = new Date(latestPaymentVersion.discussion_completed_at);
-                const newPayments = allPayments.filter((pay: any) => {
-                  const payDate = new Date(pay.created_at);
-                  return payDate > discussionDate; // Use > instead of >= to be more precise
-                });
-                
-                setPostDiscussionPayments(newPayments);
-                setPayments([]); // Clear old payments since they're in versions
-              } else {
-                setPayments(allPayments);
-                setPostDiscussionPayments([]);
-              }
+          } else {
+            setExpenses(allExpenses);
+            setPostDiscussionExpenses([]);
+          }
+          
+          if (dashboardRes.data.project?.payments_discussion_completed) {
+            // Get the latest payment version to determine what's "old"
+            const latestPaymentVersion = paymentVersionsData[paymentVersionsData.length - 1];
+            if (latestPaymentVersion) {
+              // The versioned data is already stored in the version, so current table should only show new items
+              // Filter payments created AFTER the latest discussion completion
+              const discussionDate = new Date(latestPaymentVersion.discussion_completed_at);
+              const newPayments = allPayments.filter((pay: any) => {
+                const payDate = new Date(pay.created_at);
+                return payDate > discussionDate; // Use > instead of >= to be more precise
+              });
+              
+              setPostDiscussionPayments(newPayments);
+              setPayments([]); // Clear old payments since they're in versions
             } else {
               setPayments(allPayments);
               setPostDiscussionPayments([]);
             }
-          } catch (err) {
-            // Error handling is done by the API service
+          } else {
+            setPayments(allPayments);
+            setPostDiscussionPayments([]);
           }
+        } catch (err) {
+          // Error handling is done by the API service
         }
+      }
 
-        // Get client's own messages
-        if (user.client_id) {
-          const messagesRes = await api.get(`messages/?client=${user.client_id}`);
-          setMessages(messagesRes.data);
-        }
-      } catch (error: any) {
-    // Error handling is done by the API service
-    if (error.response?.status === 401) {
-      alert('Session expired, please login again.');
-      window.location.hash = '#home';
+      // Get client's own messages
+      if (user.client_id) {
+        const messagesRes = await api.get(`messages/?client=${user.client_id}`);
+        setMessages(messagesRes.data);
+      }
+    } catch (error: any) {
+      // Error handling is done by the API service
+      if (error.response?.status === 401) {
+        alert('Session expired, please login again.');
+        window.location.hash = '#home';
+      }
     }
-  }
-    };
+  };
 
+  useEffect(() => {
     fetchData();
     
     // Set up polling to check for new versions every 10 seconds
@@ -414,30 +414,30 @@ export function ClientDashboard() {
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Project Overview */}
-        <Card className="mb-8 bg-white dark:bg-gray-800 luxury-shadow">
+        <Card className="mb-8 bg-white dark:bg-gray-800 luxury-shadow border-2 border-red-500">
           <CardContent className="p-6">
             {projectData ? (
               <div className="flex items-start justify-between mb-6">
-                <div>
+                <div className="w-full">
                   <div className="flex items-center gap-3 mb-2">
                     <Home className="h-6 w-6 text-[#D4AF37]" />
-                    <div>
-                      <h2 className="text-xl text-[#1A1A1A] dark:text-white">
+                    <div className="w-full">
+                      <h2 className="text-2xl text-[#1A1A1A] dark:text-white font-bold">
                         {projectData.title}
                       </h2>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="text-base text-gray-600 dark:text-gray-400">
                         {projectData.client_address} - {t('Phone', 'رقم الهاتف')}: {projectData.client_phone}
                       </p>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap gap-4 text-base text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded">
                       <Clock className="h-4 w-4" />
                       <span>
                         {t('البداية:', 'Start:')} {projectData.start_date ? formatDate(projectData.start_date) : t('غير محدد', 'Not set')}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-700 px-3 py-2 rounded">
                       <Clock className="h-4 w-4" />
                       <span>
                         {t('الانتهاء المتوقع:', 'Expected End:')} {projectData.expected_end_date ? formatDate(projectData.expected_end_date) : t('غير محدد', 'Not set')}
@@ -445,12 +445,12 @@ export function ClientDashboard() {
                     </div>
                   </div>
                 </div>
-                <div className="px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm">
+                <div className="px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-base font-semibold border-2 border-green-500">
                   {projectData.status === 'active' ? t('نشط', 'Active') : projectData.status === 'completed' ? t('مكتمل', 'Completed') : projectData.status}
                 </div>
               </div>
             ) : (
-              <p>{t('جاري تحميل بيانات المشروع...', 'Loading project data...')}</p>
+              <p className="text-red-500 font-bold text-xl">{t('جاري تحميل بيانات المشروع...', 'Loading project data...')}</p>
             )}
 
             {projectData && (

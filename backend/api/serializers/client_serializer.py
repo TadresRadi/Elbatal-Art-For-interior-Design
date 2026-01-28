@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.db.models import Sum
 from django.core.exceptions import ValidationError
 
-from api.models import Client, ProjectProgress
+from api.models import Client, Project, ProjectProgress
 from django.contrib.auth.models import User
 
 
@@ -18,6 +18,14 @@ class ClientSerializer(serializers.ModelSerializer):
     pending = serializers.SerializerMethodField()
     upcoming = serializers.SerializerMethodField()
     expenses_count = serializers.SerializerMethodField()
+    
+    # Project fields
+    title = serializers.CharField(source='project.title', read_only=True)
+    start_date = serializers.DateField(source='project.start_date', read_only=True)
+    expected_end_date = serializers.DateField(source='project.expected_end_date', read_only=True)
+    client_address = serializers.CharField(source='address', read_only=True)
+    client_phone = serializers.CharField(source='phone', read_only=True)
+    client_username = serializers.CharField(source='user.username', read_only=True)
 
     class Meta:
         model = Client
@@ -27,11 +35,14 @@ class ClientSerializer(serializers.ModelSerializer):
             'budget', 'created_at', 'discussion_completed', 'discussion_completed_at',
             'expenses_discussion_completed', 'expenses_discussion_completed_at',
             'payments_discussion_completed', 'payments_discussion_completed_at',
-            'expenses_version_count', 'payments_version_count'
+            'expenses_version_count', 'payments_version_count',
+            # Project fields
+            'title', 'start_date', 'expected_end_date', 'client_address', 'client_phone', 'client_username'
         ]
         read_only_fields = [
             'id', 'created_at', 'expenses_version_count', 'payments_version_count',
-            'expenses_discussion_completed_at', 'payments_discussion_completed_at'
+            'expenses_discussion_completed_at', 'payments_discussion_completed_at',
+            'title', 'start_date', 'expected_end_date', 'client_address', 'client_phone', 'client_username'
         ]
 
     def validate_budget(self, value):
@@ -137,7 +148,7 @@ class ClientCreateSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        """Create user and client instances."""
+        """Create user, client, and project instances."""
         # Extract user data
         user_data = {
             'username': validated_data['username'],
@@ -160,6 +171,20 @@ class ClientCreateSerializer(serializers.ModelSerializer):
         
         # Create client
         client = Client.objects.create(**client_data)
+        
+        # Create project for the client
+        project_data = {
+            'client': client,
+            'title': f"{validated_data.get('first_name', '')} {validated_data.get('last_name', '')} Project".strip() or f"{validated_data['username']}'s Project",
+            'description': f"Project for {validated_data['username']}",
+            'total_budget': validated_data.get('budget', 0),
+            'start_date': None,  # Will be set later
+            'expected_end_date': None,  # Will be set later
+        }
+        project = Project.objects.create(**project_data)
+        
+        # Create progress for the project
+        ProjectProgress.objects.create(project=project, percentage=0)
         
         return client
 
