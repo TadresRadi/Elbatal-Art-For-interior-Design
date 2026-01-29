@@ -37,6 +37,8 @@ urlpatterns = [
     path('api/client/dashboard/', ClientDashboardView.as_view()),
     path('api/admin/cash-receipts/', cash_receipt_views.create_cash_receipt, name='create-cash-receipt'),
     path('api/admin/payments/', cash_receipt_views.get_admin_client_payments, name='get-admin-client-payments'),
+    path('api/admin/payments/<int:pk>/', cash_receipt_views.update_cash_receipt, name='update-cash-receipt'),
+    path('api/admin/payments/<int:pk>/delete/', cash_receipt_views.delete_cash_receipt, name='delete-cash-receipt'),
     path('api/client/payments/', cash_receipt_views.get_client_cash_receipts, name='get-client-payments'),
     path('api/work-items/', get_work_items, name='get-work-items'),
     path('auth/me/', MeView.as_view()),

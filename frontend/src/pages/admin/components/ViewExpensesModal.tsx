@@ -314,7 +314,7 @@ export function ViewExpensesModal({ isOpen, onClose, client, t }: ViewExpensesMo
     if (!result.isConfirmed) return;
     
     try {
-      await api.delete(`admin/payments/${id}/`);
+      await api.delete(`admin/payments/${id}/delete/`);
       setPayments(payments.filter(pay => pay.id !== id));
       await showPaymentSuccessAlert('deleted');
     } catch (err) {

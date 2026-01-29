@@ -1,5 +1,5 @@
 import { useApp } from '../lib/context';
-import { Facebook, Instagram, Twitter, Linkedin, Phone, Mail, MapPin } from 'lucide-react';
+import { Facebook, Youtube, Phone, Mail, MapPin } from 'lucide-react';
 import LogoUrl from '../assets/logo.jpg';
 
 export function Footer() {
@@ -7,9 +7,7 @@ export function Footer() {
 
   const socialLinks = [
     { icon: Facebook, href: 'https://www.facebook.com/eng.armya' },
-    { icon: Instagram, href: '#' },
-    { icon: Twitter, href: '#' },
-    { icon: Linkedin, href: '#' },
+    { icon: Youtube, href: '#' },
   ];
 
   return (
@@ -30,7 +28,7 @@ export function Footer() {
                 />
               </div>
               <h3 className="text-[#D4AF37]">
-                {t('شركة البطل للفنون', 'Elbatal Art Company')}
+                {t('شركة البطل ارت', 'Elbatal Art Company')}
               </h3>
             </div>
             <p className="text-gray-400 text-sm">
@@ -121,7 +119,7 @@ export function Footer() {
         <div className="border-t border-gray-800 mt-12 pt-8 text-center">
           <p className="text-gray-400 text-sm">
             {t(
-              '© 2025 شركة البطل للفنون. جميع الحقوق محفوظة.',
+              '© 2025 شركة البطل ارت. جميع الحقوق محفوظة.',
               '© 2025 Elbatal Art Company. All rights reserved.'
             )}
           </p>

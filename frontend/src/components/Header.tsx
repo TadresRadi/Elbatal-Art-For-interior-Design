@@ -10,9 +10,9 @@ export function Header() {
 
   const navigation = [
     { name: t('الرئيسية', 'Home'), href: '#home' },
-    { name: t('أعمالنا', 'Our Works'), href: '#works' },
-    { name: t('من نحن', 'About Us'), href: '#about' },
     { name: t('خدماتنا', 'Services'), href: '#services' },
+    { name: t('أعمالنا', 'Works'), href: '#works' },
+    { name: t('تصميم بالذكاء الاصطناعي', 'AI Design'), href: '#create-ai-design' },
     { name: t('الجديد', "What's New"), href: '#news' },
     { name: t('تواصل معنا', 'Contact'), href: '#contact' },
   ];
@@ -36,7 +36,7 @@ export function Header() {
               </div>
               <div className={`${language === 'ar' ? 'mr-3' : 'ml-3'}`}>
                 <h1 className="text-[#1A1A1A] dark:text-white">
-                  {t('شركة البطل للفنون', 'Elbatal Art Company')}
+                  {t('شركة البطل ارت', 'Elbatal Art Company')}
                 </h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {t('للتشطيبات الفاخرة', 'Luxury Finishings')}
@@ -46,16 +46,18 @@ export function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-8 rtl:space-x-reverse">
-            {navigation.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className="text-gray-700 dark:text-gray-300 hover:text-[#D4AF37] transition-colors"
-              >
-                {item.name}
-              </a>
-            ))}
+          <div className="hidden lg:flex items-center justify-between flex-1 mx-8">
+            <div className="flex items-center space-x-8 rtl:space-x-reverse">
+              {navigation.map((item) => (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className="text-gray-700 dark:text-gray-300 hover:text-[#D4AF37] transition-colors text-sm font-medium"
+                >
+                  {item.name}
+                </a>
+              ))}
+            </div>
           </div>
 
           {/* Actions */}

@@ -1,4 +1,6 @@
 import axios from "axios";
+import { secureStorage } from './secureStorage';
+import { InputValidator } from '../utils/validation';
 
 const API_BASE_URL = 'http://127.0.0.1:8000/api/';
 
@@ -12,7 +14,7 @@ const api = axios.create({
 
 // Function to refresh token
 const refreshToken = async (): Promise<string> => {
-  const refresh = localStorage.getItem('refreshToken');
+  const refresh = secureStorage.getRefreshToken();
   if (!refresh) {
     throw new Error('No refresh token available');
   }
@@ -23,13 +25,11 @@ const refreshToken = async (): Promise<string> => {
     });
     
     const { access } = response.data;
-    localStorage.setItem('accessToken', access);
+    secureStorage.setToken(access);
     return access;
   } catch (error) {
     // If refresh fails, clear tokens and redirect to login
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    secureStorage.clearAll();
     window.location.hash = '#login';
     throw error;
   }
@@ -37,7 +37,7 @@ const refreshToken = async (): Promise<string> => {
 
 // Request interceptor to add auth token
 api.interceptors.request.use(async (config) => {
-  let token = localStorage.getItem('accessToken');
+  let token = secureStorage.getToken();
   
   // If no token, try to refresh (except for login endpoint)
   if (!token && !config.url?.includes('login/')) {
@@ -53,12 +53,21 @@ api.interceptors.request.use(async (config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   
+  // Add security headers
+  config.headers['X-Requested-With'] = 'XMLHttpRequest';
+  
   return config;
 });
 
 // Response interceptor to handle 401 errors
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Sanitize response data to prevent XSS
+    if (response.data) {
+      response.data = InputValidator.sanitizeApiResponse(response.data);
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
     
@@ -71,9 +80,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         // If refresh fails, clear tokens and redirect to login
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+        secureStorage.clearAll();
         window.location.hash = '#login';
         return Promise.reject(refreshError);
       }

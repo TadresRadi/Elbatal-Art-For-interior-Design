@@ -104,7 +104,6 @@ export function ClientDashboard() {
       await api.post('logout/');
     } catch (err) {
       // Continue with logout even if backend call fails
-      console.error('Logout API call failed:', err);
     } finally {
       // Clear all authentication data
       localStorage.removeItem('accessToken');

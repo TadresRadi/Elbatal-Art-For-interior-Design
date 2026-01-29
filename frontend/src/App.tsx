@@ -10,6 +10,7 @@ import { NewsPage } from './pages/NewsPage';
 import { ContactPage } from './pages/ContactPage';
 import { LoginPage } from './pages/LoginPage';
 import { ClientDashboard } from './pages/ClientDashboard';
+import { CreateYourOwnDesignWithAIPage } from './pages/CreateYourOwnDesignWithAIPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { Toaster } from './components/ui/sonner';
 
@@ -120,6 +121,8 @@ function AppContent() {
         return <NewsPage />;
       case 'contact':
         return <ContactPage />;
+      case 'create-ai-design':
+        return <CreateYourOwnDesignWithAIPage />;
       case 'login':
         return <LoginPage />;
       case 'client-dashboard':

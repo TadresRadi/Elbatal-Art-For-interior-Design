@@ -6,6 +6,8 @@ import { Lock, User, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import LogoUrl from '../assets/logo.jpg';
 import api from '../lib/api';
+import { secureStorage } from '../lib/secureStorage';
+import { InputValidator } from '../utils/validation';
 import { showSuccessAlert, showErrorAlert, showWarningAlert } from '../utils/simpleAlerts';
 
 const parseJwt = (token: string) => {
@@ -28,9 +30,29 @@ export function LoginPage() {
   const { t } = useApp();
   const [credentials, setCredentials] = useState({ username: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({ username: '', password: '' });
+
+  const validateForm = () => {
+    const usernameValidation = InputValidator.validateUsername(credentials.username);
+    const passwordValidation = InputValidator.validatePassword(credentials.password);
+    
+    const newErrors = {
+      username: usernameValidation.valid ? '' : usernameValidation.message || '',
+      password: passwordValidation.valid ? '' : passwordValidation.message || ''
+    };
+    
+    setErrors(newErrors);
+    
+    return usernameValidation.valid && passwordValidation.valid;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -41,14 +63,13 @@ export function LoginPage() {
 
       const token = response.data.token;
       const refresh = response.data.refresh;
-      localStorage.setItem('accessToken', token);
-      localStorage.setItem('refreshToken', refresh);
-
-      // 🔹 دلوقتي نجيب بيانات المستخدم من auth/me/
       const meResponse = await api.get('auth/me/');
       const user = meResponse.data;
 
-      localStorage.setItem('user', JSON.stringify(user));
+      // Use secure storage instead of localStorage
+      secureStorage.setToken(token);
+      secureStorage.setRefreshToken(refresh);
+      secureStorage.setUser(user);
 
     // 🔹 نحدد الـ dashboard بناءً على role
     if (user.role === 'admin') {
@@ -97,14 +118,22 @@ export function LoginPage() {
                 placeholder={t('اسم المستخدم', 'Username')}
                 value={credentials.username}
                 onChange={(e)=>setCredentials({...credentials,username:e.target.value})}
+                className={errors.username ? 'border-red-500' : ''}
               />
+              {errors.username && (
+                <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+              )}
 
               <Input
                 type="password"
                 placeholder={t('كلمة المرور', 'Password')}
                 value={credentials.password}
                 onChange={(e)=>setCredentials({...credentials,password:e.target.value})}
+                className={errors.password ? 'border-red-500' : ''}
               />
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+              )}
 
               <Button type="submit" disabled={isLoading} className="w-full">
                 {isLoading ? t('جاري تسجيل الدخول...', 'Logging in...') : t('دخول', 'Login')}
