@@ -154,8 +154,7 @@ export function HomePage() {
               </Button>
               <Button
                 size="lg"
-                variant="outline"
-                className="border-white text-white hover:bg-white hover:text-[#1A1A1A]"
+                className="bg-[#D4AF37] hover:bg-[#B8941F] text-white"
                 onClick={() => (window.location.hash = '#services')}
               >
                 {t('خدماتنا', 'Our Services')}

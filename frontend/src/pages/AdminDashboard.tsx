@@ -16,6 +16,7 @@ import { ViewExpensesModal } from './admin/components/ViewExpensesModal';
 import { ProgressModal } from './admin/components/ProgressModal';
 import { WorkItemsTable } from '../components/WorkItemsTable';
 import { CreateWorkItemModal } from '../components/CreateWorkItemModal';
+import { secureStorage } from '../lib/secureStorage';
 import type { Client, CreateClientForm } from './admin/types';
 import {
   showClientSuccessAlert,
@@ -39,9 +40,8 @@ export function AdminDashboard() {
   // IMMEDIATE AUTHENTICATION CHECK - Runs before any rendering
   // Only check if we're not on the login page
   if (window.location.hash !== '#login') {
-    const accessToken = localStorage.getItem('accessToken');
-    const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
+    const accessToken = secureStorage.getToken();
+    const user = secureStorage.getUser();
     
     if (!accessToken || !user || user.role !== 'admin') {
       // Redirect immediately without rendering anything
@@ -52,8 +52,7 @@ export function AdminDashboard() {
   
   // Check if user is authenticated and is admin
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
+    const user = secureStorage.getUser();
     
     if (!user) {
       window.location.replace('#login');
@@ -69,9 +68,8 @@ export function AdminDashboard() {
   // Additional check for browser history navigation
   useEffect(() => {
     const checkAuth = () => {
-      const accessToken = localStorage.getItem('accessToken');
-      const userStr = localStorage.getItem('user');
-      const user = userStr ? JSON.parse(userStr) : null;
+      const accessToken = secureStorage.getToken();
+      const user = secureStorage.getUser();
       
       // If no tokens or user, redirect to login immediately
       if (!accessToken || !user || user.role !== 'admin') {
@@ -193,10 +191,7 @@ export function AdminDashboard() {
       // Continue with logout even if backend call fails
     } finally {
       // Clear all authentication data
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      localStorage.clear();
+      secureStorage.clearAll();
       
       // Clear session storage as well
       sessionStorage.clear();

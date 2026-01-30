@@ -29,6 +29,7 @@ import {
 import { useState, useEffect } from 'react';
 import { Textarea } from '../components/ui/textarea';
 import api from '../lib/api';
+import { secureStorage } from '../lib/secureStorage';
 
 export function ClientDashboard() {
   const { t, language, setLanguage, theme, setTheme } = useApp();
@@ -36,9 +37,8 @@ export function ClientDashboard() {
   // IMMEDIATE AUTHENTICATION CHECK - Runs before any rendering
   // Only check if we're not on the login page
   if (window.location.hash !== '#login') {
-    const accessToken = localStorage.getItem('accessToken');
-    const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
+    const accessToken = secureStorage.getToken();
+    const user = secureStorage.getUser();
     
     if (!accessToken || !user || user.role !== 'client') {
       // Redirect immediately without rendering anything
@@ -49,8 +49,7 @@ export function ClientDashboard() {
   
   // Check if user is authenticated and is client
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
-    const user = userStr ? JSON.parse(userStr) : null;
+    const user = secureStorage.getUser();
     
     if (!user) {
       window.location.replace('#login');
@@ -66,9 +65,8 @@ export function ClientDashboard() {
   // Additional check for browser history navigation
   useEffect(() => {
     const checkAuth = () => {
-      const accessToken = localStorage.getItem('accessToken');
-      const userStr = localStorage.getItem('user');
-      const user = userStr ? JSON.parse(userStr) : null;
+      const accessToken = secureStorage.getToken();
+      const user = secureStorage.getUser();
       
       // If no tokens or user, redirect to login immediately
       if (!accessToken || !user || user.role !== 'client') {
@@ -106,10 +104,7 @@ export function ClientDashboard() {
       // Continue with logout even if backend call fails
     } finally {
       // Clear all authentication data
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      localStorage.clear();
+      secureStorage.clearAll();
       
       // Clear session storage as well
       sessionStorage.clear();
@@ -156,7 +151,7 @@ export function ClientDashboard() {
       }
       
       // Get user info for client_id
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const user = secureStorage.getUser() || {};
       const clientId = user.client_id;
       
       if (clientId) {
@@ -299,16 +294,18 @@ export function ClientDashboard() {
   const totalCost = totalExpenses + totalPostDiscussionExpenses + totalExpenseVersions;
 
   const handleSendMessage = async () => {
-    if (!message.trim()) return;
+    if (!message.trim()) {
+      alert(t('الرسالة مطلوبة', 'Message is required'));
+      return;
+    }
 
     try {
       // Get user info to extract client_id
-      const userStr = localStorage.getItem('user');
-      const user = userStr ? JSON.parse(userStr) : null;
+      const user = secureStorage.getUser();
       
       const res = await api.post('messages/', {
         content: message,
-        client: user?.client_id  // Changed from client_id to client
+        client: user?.client_id,
       });
 
       setMessages([...messages, res.data]);

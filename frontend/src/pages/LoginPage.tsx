@@ -63,22 +63,33 @@ export function LoginPage() {
 
       const token = response.data.token;
       const refresh = response.data.refresh;
-      const meResponse = await api.get('auth/me/');
-      const user = meResponse.data;
 
-      // Use secure storage instead of localStorage
+      // Store token FIRST before making authenticated requests
       secureStorage.setToken(token);
       secureStorage.setRefreshToken(refresh);
+
+      // Now make authenticated request to get user info
+      const meResponse = await api.get('auth/me/');
+      const user = meResponse.data;
+      
       secureStorage.setUser(user);
 
-    // 🔹 نحدد الـ dashboard بناءً على role
-    if (user.role === 'admin') {
-      window.location.replace('#admin-dashboard');
-    } else if (user.role === 'client') {
-      window.location.replace('#client-dashboard');
-    } else {
-      await showWarningAlert(t('Role not recognized', 'لم يتم التعرف على الدور'));
-    }
+      // 🔹 نحدد الـ dashboard بناءً على role
+      if (user.role === 'admin') {
+        const targetUrl = window.location.href.split('#')[0] + '#admin-dashboard';
+        // Force a hard redirect to bypass App.tsx routing
+        setTimeout(() => {
+          window.location.href = targetUrl;
+        }, 100);
+      } else if (user.role === 'client') {
+        const targetUrl = window.location.href.split('#')[0] + '#client-dashboard';
+        // Force a hard redirect to bypass App.tsx routing
+        setTimeout(() => {
+          window.location.href = targetUrl;
+        }, 100);
+      } else {
+        await showWarningAlert(t('Role not recognized', 'لم يتم التعرف على الدور'));
+      }
 
   } catch (error: any) {
     if (error.response?.status === 500) {
