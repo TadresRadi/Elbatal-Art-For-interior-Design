@@ -29,14 +29,10 @@ function AppContent() {
     // Check if user is trying to access dashboard pages without authentication
     if (hash === 'admin-dashboard' || hash === 'client-dashboard') {
       if (!user) {
-        // No user found, redirect to login
         window.location.replace('#login');
         return;
       }
-      
-      // Check role-specific access
       if (hash === 'admin-dashboard' && user.role !== 'admin') {
-        // User is not admin, redirect to appropriate dashboard or login
         if (user.role === 'client') {
           window.location.replace('#client-dashboard');
         } else {
